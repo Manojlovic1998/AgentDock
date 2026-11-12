@@ -307,6 +307,26 @@
   .a-sky { background: #5aa9f5; }
   .toast { position: absolute; left: 50%; bottom: 38px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; background: var(--tx); color: var(--bg1); border-radius: 7px; box-shadow: 0 12px 30px var(--shd); font-weight: 500; white-space: nowrap; }
   .toast button { height: 22px; padding: 0 8px; border-radius: 4px; font-weight: 600; color: var(--bg1); border: 1px solid color-mix(in srgb, var(--bg1) 35%, transparent); }
+  /* coach marks: above dialogs (46/47) and toasts (50), below tooltips (60) */
+  .cm-block { position: fixed; inset: 0; z-index: 55; }
+  .cm-dim { position: fixed; inset: 0; z-index: 55; pointer-events: none; background: rgba(0, 0, 0, 0.5); }
+  .cm-ring { position: fixed; z-index: 55; border-radius: 6px; pointer-events: none; box-shadow: 0 0 0 2px var(--acc), 0 0 0 5px var(--acc-s); }
+  .cm-ring.pulse { animation: cm-pulse 1.6s ease-out infinite; }
+  .cm-card { position: fixed; z-index: 56; width: 300px; max-width: calc(100vw - 16px); padding: 12px; background: var(--bg3); border: 1px solid var(--line2); border-radius: 10px; box-shadow: 0 24px 60px var(--shd), 0 2px 6px var(--shd); }
+  .cm-arrow { position: absolute; width: 10px; height: 10px; background: var(--bg3); border: 1px solid var(--line2); transform: rotate(45deg); }
+  .cm-arrow.bottom { top: -6px; margin-left: -5px; border-right: 0; border-bottom: 0; }
+  .cm-arrow.top { bottom: -6px; margin-left: -5px; border-left: 0; border-top: 0; }
+  .cm-arrow.right { left: -6px; margin-top: -5px; border-right: 0; border-top: 0; }
+  .cm-arrow.left { right: -6px; margin-top: -5px; border-left: 0; border-bottom: 0; }
+  .cm-wait { width: 6px; height: 6px; border-radius: 50%; background: var(--acc); animation: cm-wait 1.2s ease-in-out infinite; }
+  @keyframes cm-pulse {
+    0% { box-shadow: 0 0 0 2px var(--acc), 0 0 0 2px color-mix(in srgb, var(--acc) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 2px var(--acc), 0 0 0 14px transparent; }
+  }
+  @keyframes cm-wait { 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) {
+    .cm-ring.pulse, .cm-wait { animation: none; }
+  }
   .rsz { position: absolute; left: -3px; top: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 6; }
   .rsz:hover { background: var(--acc-s); }
   .scr::-webkit-scrollbar { width: 10px; height: 10px; }

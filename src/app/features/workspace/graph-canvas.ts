@@ -73,6 +73,7 @@ interface NodeDrag {
             [style.height.px]="n.h"
             [attr.aria-label]="n.aria"
             [attr.aria-pressed]="n.selected"
+            [attr.data-tour]="'node-' + n.type"
             adDrag
             (dragStart)="nodeDragStart(n.id)"
             (dragMove)="nodeDragMove($event)"
@@ -189,7 +190,7 @@ interface NodeDrag {
       }
     </div>
   `,
-  host: { class: 'relative block min-h-0 flex-1' },
+  host: { class: 'relative block min-h-0 flex-1', 'data-tour': 'canvas' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GraphCanvas {

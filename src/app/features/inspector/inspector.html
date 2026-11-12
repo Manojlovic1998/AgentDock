@@ -73,7 +73,7 @@
   <div ngTabs class="flex min-h-0 flex-1 flex-col">
     <div ngTabList class="tabs" [selectedTab]="tab()" (selectedTabChange)="pickTab($event)">
       @for (t of tabs(); track t.id) {
-        <div ngTab class="tab" [value]="t.id">{{ t.label }}</div>
+        <div ngTab class="tab" [value]="t.id" [attr.data-tour]="'insp-tab-' + t.id">{{ t.label }}</div>
       }
     </div>
 
@@ -83,7 +83,7 @@
         <ng-template ngTabContent>
           @if (overview(); as o) {
             @if (o.problems.length) {
-              <div class="sec">
+              <div class="sec" data-tour="insp-problems">
                 @for (p of o.problems; track $index) {
                   <div class="call">
                     <svg [adIcon]="sevIcon[p.sev]" class="mt-px" [class]="'c-' + p.sev"></svg>
@@ -161,7 +161,7 @@
             <span class="lb">Frontmatter</span>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] text-tx2">name</span>
-              <input class="inp font-mono !text-[11.5px]" [value]="n.name" (input)="edit({ name: text($event) })" />
+              <input class="inp font-mono !text-[11.5px]" data-tour="insp-name" [value]="n.name" (input)="edit({ name: text($event) })" />
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] text-tx2">description</span>
@@ -228,7 +228,7 @@
           <div class="sec !border-b-0">
             <div class="relative flex items-center">
               <span class="lb flex-1">Preloaded skills</span>
-              <button class="bt !h-[22px]" ngMenuTrigger [menu]="addMenu"><svg adIcon="plus" class="s"></svg>Add skill</button>
+              <button class="bt !h-[22px]" ngMenuTrigger [menu]="addMenu" data-tour="insp-add-skill"><svg adIcon="plus" class="s"></svg>Add skill</button>
               <div ngMenu adMenuDismiss #addMenu="ngMenu" class="menu top-[26px] right-0 w-[250px]" (itemSelected)="$event?.()">
                 @for (o of skills().addable; track o.name) {
                   <div ngMenuItem class="mi k-skill" [value]="o.pick">

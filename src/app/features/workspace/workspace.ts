@@ -33,7 +33,7 @@ type View = 'graph' | 'source';
       @if (matchLabel(); as label) {
         <span class="font-mono text-[11px] text-tx3">{{ label }}</span>
       }
-      <div class="flex flex-wrap items-center gap-1">
+      <div class="flex flex-wrap items-center gap-1" data-tour="filters">
         @for (f of ws.filters(); track f.type) {
           <button class="fc" [class]="'k-' + f.type" [class.on]="f.on" [attr.aria-pressed]="f.on" (click)="toggleFilter(f.type, f.on)">
             <i></i>{{ f.label }}<span class="font-mono text-tx3">{{ f.n }}</span>
@@ -42,7 +42,7 @@ type View = 'graph' | 'source';
       </div>
       <span class="flex-1"></span>
       <div class="relative">
-        <button class="bt" ngMenuTrigger [menu]="newMenu">
+        <button class="bt" ngMenuTrigger [menu]="newMenu" data-tour="new">
           <svg adIcon="plus"></svg>New<svg adIcon="chevD" class="s text-tx3"></svg>
         </button>
         <div ngMenu adMenuDismiss #newMenu="ngMenu" class="menu top-[30px] right-0" (itemSelected)="$event?.()">

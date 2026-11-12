@@ -26,6 +26,10 @@ export interface Prefs {
   managed: boolean;
   watch: boolean;
   ignore: string;
+  /** The first-run invitation to take the product tour has been shown. */
+  tourOffered: boolean;
+  /** Ids of the tours and walkthroughs finished so far. */
+  toursDone: string[];
 }
 
 export type BoolPref = { [K in keyof Prefs]: Prefs[K] extends boolean ? K : never }[keyof Prefs];
@@ -51,6 +55,8 @@ const DEFAULTS: Prefs = {
   managed: false,
   watch: true,
   ignore: 'node_modules, dist, .nx',
+  tourOffered: false,
+  toursDone: [],
 };
 
 const KEY = 'agentdock.prefs.v1';

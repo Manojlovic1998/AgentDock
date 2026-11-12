@@ -17,10 +17,10 @@ const KIND_LABEL = { M: 'Modified', A: 'Added', D: 'Deleted' } as const;
       <span class="font-mono text-[11px] text-tx3">{{ summary() }}</span>
       <span class="flex-1"></span>
       <button class="bt dg" (click)="ws.discardAll()">Discard all</button>
-      <button class="bt pr" (click)="ws.saveAll()"><svg adIcon="save"></svg>Save all to disk</button>
+      <button class="bt pr" data-tour="changes-save" (click)="ws.saveAll()"><svg adIcon="save"></svg>Save all to disk</button>
     </div>
     <div class="flex min-h-0 flex-1 flex-wrap">
-      <div class="scr max-w-[340px] flex-[1_1_280px] overflow-y-auto border-r border-line bg-bg1 p-1.5">
+      <div class="scr max-w-[340px] flex-[1_1_280px] overflow-y-auto border-r border-line bg-bg1 p-1.5" data-tour="changes-list">
         @for (c of ws.changes(); track c.id) {
           <button
             class="nv !h-[30px]"

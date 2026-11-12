@@ -61,6 +61,7 @@ const NAV: [key: string, label: string, items: NavDef[]][] = [
               class="nv"
               [class.on]="it.on"
               [attr.data-tip]="it.label"
+              [attr.data-tour]="'nav-' + it.id"
               [attr.aria-current]="it.on ? 'page' : null"
               (click)="cmd.go(it.id)"
             >
@@ -87,6 +88,7 @@ const NAV: [key: string, label: string, items: NavDef[]][] = [
     '[class.col]': 'ui.sideCollapsed()',
     role: 'navigation',
     'aria-label': 'Primary',
+    'data-tour': 'sidebar',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
