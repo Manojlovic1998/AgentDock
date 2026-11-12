@@ -100,7 +100,15 @@ export class Commands {
   }
 
   saveAll(): void {
-    this.ws.saveAll();
+    void this.ws.saveAll();
+  }
+
+  rescan(): void {
+    void this.ws.rescan();
+  }
+
+  openFolder(): void {
+    void this.ws.openFolder();
   }
 
   openPalette(): void {

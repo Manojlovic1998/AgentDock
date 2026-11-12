@@ -1,7 +1,7 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { KIND_LABEL, STATUS_LABEL, labelOf } from '../../core/model/graph';
+import { KIND_LABEL, STATUS_LABEL, labelOf, plural } from '../../core/model/graph';
 import { SEVERITY_ICON, iconFor } from '../../core/model/icons';
 import { highlight, sourceOf } from '../../core/model/source';
 import { Kind, Resource, ResourcePatch } from '../../core/model/types';
@@ -208,8 +208,8 @@ export class Inspector {
         ];
       default:
         return [
-          ['Scope', 'project'],
-          ['Length', '412 lines'],
+          ['Scope', n.scope ?? 'project'],
+          ['Length', plural(n.lines ?? 0, 'line')],
           ['File', n.file],
           ['Modified', n.mod],
         ];
@@ -235,7 +235,9 @@ export class Inspector {
   protected toggleTool(tool: string): void {
     const cur = this.one()?.tools ?? [];
     const on = cur.indexOf(tool) >= 0;
-    this.edit({ tools: on ? cur.filter((t) => t !== tool) : TOOLS.filter((t) => t === tool || cur.indexOf(t) >= 0) });
+    // Entries outside the canonical list (mcp__server__tool, Bash(git:*)) are kept after the known ones.
+    const custom = cur.filter((t) => TOOLS.indexOf(t) < 0);
+    this.edit({ tools: on ? cur.filter((t) => t !== tool) : TOOLS.filter((t) => t === tool || cur.indexOf(t) >= 0).concat(custom) });
   }
 
   protected detach(skillId: string): void {

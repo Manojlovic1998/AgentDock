@@ -22,6 +22,13 @@ export interface Resource {
   transport?: string;
   url?: string;
   paths?: string;
+  /** File content as scanned from disk. Absent for sample data and resources created in the app. */
+  raw?: string;
+  /** Modification time of the scanned file, used to detect external edits before writing. */
+  mtime?: number;
+  lines?: number;
+  /** Ids this resource pointed to when it was scanned; relationship edits are written as a delta to these. */
+  linked?: string[];
 }
 
 export type ResourcePatch = Partial<Omit<Resource, 'id' | 'type'>>;
@@ -69,6 +76,21 @@ export interface WorkspaceSnapshot {
   presets: Preset[];
   tables: Record<string, StaticTable>;
   activity: ActivityEntry[];
+  /** Findings that need the file system or environment, or that belong to the sample data. */
+  problems: Problem[];
+  /** When the snapshot was taken, phrased to follow "scanned": "2 minutes ago", "at 14:05". */
+  scanned: string;
+}
+
+/** A change to apply on disk. Paths are project-relative, or start with "~/" for user scope. */
+export type FileOp =
+  | { op: 'write'; file: string; text: string; mtime?: number }
+  | { op: 'trash'; file: string }
+  | { op: 'jsonRemove'; file: string; path: string[] };
+
+export interface SaveResult {
+  ok: boolean;
+  errors: { file: string; error: string }[];
 }
 
 /** Editable workspace state: current values next to the last saved baseline. */
@@ -119,6 +141,8 @@ export interface Change {
   add: number;
   del: number;
   preset?: boolean;
+  /** New file content; absent for deletions and presets. */
+  text?: string;
 }
 
 export interface Token {
