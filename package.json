@@ -23,7 +23,8 @@
     "files": [
       "dist/agent-dock/browser/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules"
     ],
     "win": {
       "target": "nsis"
