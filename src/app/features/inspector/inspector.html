@@ -1,0 +1,281 @@
+<span
+  class="rsz"
+  adDrag
+  [threshold]="1"
+  (mousedown)="$event.preventDefault()"
+  (dragStart)="resizeStart()"
+  (dragMove)="resizeMove($event)"
+></span>
+
+@if (!ui.sel().length) {
+  <div class="sec">
+    <span class="lb">Inspector</span>
+    <p class="leading-normal text-tx2">Nothing selected. Click a node to inspect it, or search with <span class="kbd">Ctrl K</span>.</p>
+  </div>
+  <div class="sec">
+    <span class="lb">On this canvas</span>
+    @for (f of ws.filters(); track f.type) {
+      <div class="flex h-[22px] items-center gap-2" [class]="'k-' + f.type">
+        <span class="size-2 rounded-xs bg-k"></span>
+        <span class="flex-1">{{ f.label }}</span>
+        <span class="font-mono text-tx2">{{ f.n }}</span>
+      </div>
+    }
+  </div>
+  <div class="sec">
+    <span class="lb">Edge legend</span>
+    <div class="flex items-center gap-2.5">
+      <span class="w-7 border-t-[1.5px] border-tx3"></span><span class="text-tx2">Configured relationship</span>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <span class="w-7 border-t-[1.5px] border-dotted border-warn"></span><span class="text-tx2">Target has a warning</span>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <span class="w-7 border-t-[1.5px] border-dashed border-err"></span><span class="text-tx2">Invalid: target not found</span>
+    </div>
+  </div>
+} @else if (ui.sel().length > 1) {
+  <div class="sec">
+    <div class="flex items-center gap-2">
+      <span class="flex-1 font-semibold">{{ ui.sel().length }} resources selected</span>
+      <button class="bt gh" (click)="ui.sel.set([])">Clear</button>
+    </div>
+  </div>
+  <div class="scr flex-1 overflow-y-auto p-1.5">
+    @for (r of multi(); track r.id) {
+      <button class="lr" [class]="'k-' + r.type" (click)="ui.select(r.id)">
+        <span class="tile sm"><svg [adIcon]="r.icon" class="s"></svg></span>
+        <span class="el min-w-0 flex-1 font-mono text-[11.5px]">{{ r.name }}</span>
+        <span class="text-[11px] text-tx3">{{ r.kind }}</span>
+      </button>
+    }
+  </div>
+} @else if (one(); as n) {
+  @if (header(); as h) {
+    <div class="flex flex-none items-center gap-2.5 py-2.5 pr-2 pl-3" [class]="'k-' + h.type">
+      <span class="tile lg"><svg [adIcon]="h.icon"></svg></span>
+      <div class="min-w-0 flex-1">
+        <div class="el font-mono text-[13px] font-semibold tracking-[-0.01em]">{{ h.label }}</div>
+        <div class="mt-px flex items-center gap-2">
+          <span class="text-[11px] text-tx3">{{ h.kind }}</span>
+          <span class="st !text-[11px]"><span class="dot" [class]="h.status"></span>{{ h.statusLabel }}</span>
+        </div>
+      </div>
+      <button class="ib" adTip="More actions" [tipEnd]="true" aria-label="More actions" (click)="cmd.openContext(n.id, $event)">
+        <svg adIcon="more" style="stroke-width: 2.6"></svg>
+      </button>
+      <button class="ib" adTip="Close inspector" [tipEnd]="true" aria-label="Close inspector" (click)="ui.inspOpen.set(false)">
+        <svg adIcon="x"></svg>
+      </button>
+    </div>
+  }
+
+  <div ngTabs class="flex min-h-0 flex-1 flex-col">
+    <div ngTabList class="tabs" [selectedTab]="tab()" (selectedTabChange)="pickTab($event)">
+      @for (t of tabs(); track t.id) {
+        <div ngTab class="tab" [value]="t.id">{{ t.label }}</div>
+      }
+    </div>
+
+    <div class="scr min-h-0 flex-1 overflow-y-auto">
+      <!-- Overview -->
+      <div ngTabPanel value="ov">
+        <ng-template ngTabContent>
+          @if (overview(); as o) {
+            @if (o.problems.length) {
+              <div class="sec">
+                @for (p of o.problems; track $index) {
+                  <div class="call">
+                    <svg [adIcon]="sevIcon[p.sev]" class="mt-px" [class]="'c-' + p.sev"></svg>
+                    <span>{{ p.msg }}</span>
+                  </div>
+                }
+              </div>
+            }
+            <div class="sec">
+              <span class="lb">Description</span>
+              <p class="leading-normal">{{ n.desc }}</p>
+            </div>
+            <div class="sec">
+              <span class="lb">{{ o.metaTitle }}</span>
+              <div class="kv">
+                @for (k of o.kv; track k[0]) {
+                  <span class="text-tx3">{{ k[0] }}</span>
+                  <span class="el font-mono text-[11px]">{{ k[1] }}</span>
+                }
+              </div>
+            </div>
+            @if (o.tools; as tools) {
+              <div class="sec">
+                <span class="lb">Tools</span>
+                <div class="flex flex-wrap items-center gap-1">
+                  @for (t of tools; track t) {
+                    <span class="chip">{{ t }}</span>
+                  }
+                </div>
+              </div>
+            }
+            <div class="sec">
+              <div class="flex items-center">
+                <span class="lb flex-1">{{ o.relTitle }}</span>
+                <span class="font-mono text-[10.5px] text-tx3">{{ o.relA.length }}</span>
+              </div>
+              <div>
+                @for (r of o.relA; track r.id) {
+                  <button class="lr" [class]="'k-' + r.type" (click)="ui.select(r.id)">
+                    <span class="tile sm"><svg [adIcon]="r.icon" class="s"></svg></span>
+                    <span class="el min-w-0 flex-1 font-mono text-[11.5px]">{{ r.name }}</span>
+                    <span class="text-[10.5px] text-tx3">{{ r.kind }}</span>
+                    <svg adIcon="chevR" class="s text-tx3"></svg>
+                  </button>
+                }
+              </div>
+              @if (!o.relA.length) {
+                <span class="text-tx3">None yet.</span>
+              }
+            </div>
+            @if (o.relB.length) {
+              <div class="sec">
+                <span class="lb">Other connections</span>
+                <div>
+                  @for (r of o.relB; track r.id) {
+                    <button class="lr" [class]="'k-' + r.type" (click)="ui.select(r.id)">
+                      <span class="tile sm"><svg [adIcon]="r.icon" class="s"></svg></span>
+                      <span class="el min-w-0 flex-1 font-mono text-[11.5px]">{{ r.name }}</span>
+                      <span class="text-[10.5px] text-tx3">{{ r.kind }}</span>
+                      <svg adIcon="chevR" class="s text-tx3"></svg>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </ng-template>
+      </div>
+
+      <!-- Configuration (agents) / Instructions (skills) -->
+      @if (has()['cf']) {
+      <div ngTabPanel value="cf">
+        <ng-template ngTabContent>
+          <div class="sec">
+            <span class="lb">Frontmatter</span>
+            <label class="flex flex-col gap-1">
+              <span class="text-[11px] text-tx2">name</span>
+              <input class="inp font-mono !text-[11.5px]" [value]="n.name" (input)="edit({ name: text($event) })" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-[11px] text-tx2">description</span>
+              <textarea class="inp" rows="3" [value]="n.desc" (input)="edit({ desc: text($event) })"></textarea>
+            </label>
+            @if (n.type === 'agent') {
+              <div class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2" id="insp-model">model</span>
+                <ad-segmented
+                  class="self-start"
+                  aria-labelledby="insp-model"
+                  [mono]="true"
+                  [options]="models"
+                  [value]="n.model ?? 'inherit'"
+                  (valueChange)="edit({ model: $event })"
+                />
+              </div>
+              <div class="relative flex flex-col gap-1">
+                <span class="text-[11px] text-tx2" id="insp-perm">permissionMode</span>
+                <button class="inp flex items-center gap-1.5 font-mono !text-[11.5px]" ngMenuTrigger [menu]="permMenu" aria-labelledby="insp-perm">
+                  <span class="flex-1 text-left">{{ n.perm }}</span>
+                  <svg adIcon="chevD" class="s text-tx3"></svg>
+                </button>
+                <div ngMenu adMenuDismiss #permMenu="ngMenu" class="menu top-12 right-0 left-0" (itemSelected)="$event?.()">
+                  @for (o of permissionModes(); track o.mode) {
+                    <div ngMenuItem class="mi font-mono !text-[11.5px]" [value]="o.pick">
+                      <span class="flex-1">{{ o.mode }}</span>
+                      <span class="t3 font-sans text-[11px]">{{ o.hint }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            <div class="flex flex-col gap-1">
+              <span class="text-[11px] text-tx2">{{ n.type === 'agent' ? 'tools' : 'allowed-tools' }}</span>
+              <div class="flex flex-wrap items-center gap-1">
+                @for (o of toolOptions(); track o.label) {
+                  <button class="chip tg" [class.on]="o.on" [attr.aria-pressed]="o.on" (click)="toggleTool(o.label)">{{ o.label }}</button>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="sec !border-b-0">
+            <div class="flex items-center">
+              <span class="lb flex-1">Instructions</span>
+              <span class="chip">markdown</span>
+            </div>
+            <textarea
+              class="inp font-mono !text-[11px]"
+              rows="12"
+              aria-label="Instructions"
+              [value]="n.body ?? ''"
+              (input)="edit({ body: text($event) })"
+            ></textarea>
+          </div>
+        </ng-template>
+      </div>
+      }
+
+      <!-- Skills -->
+      @if (has()['sk']) {
+      <div ngTabPanel value="sk">
+        <ng-template ngTabContent>
+          <div class="sec !border-b-0">
+            <div class="relative flex items-center">
+              <span class="lb flex-1">Preloaded skills</span>
+              <button class="bt !h-[22px]" ngMenuTrigger [menu]="addMenu"><svg adIcon="plus" class="s"></svg>Add skill</button>
+              <div ngMenu adMenuDismiss #addMenu="ngMenu" class="menu top-[26px] right-0 w-[250px]" (itemSelected)="$event?.()">
+                @for (o of skills().addable; track o.name) {
+                  <div ngMenuItem class="mi k-skill" [value]="o.pick">
+                    <svg adIcon="zap" class="kc"></svg>
+                    <span class="el min-w-0 flex-1 font-mono text-[11.5px]">{{ o.name }}</span>
+                    <span class="t3 text-[10.5px]">{{ o.scope }}</span>
+                  </div>
+                } @empty {
+                  <div class="px-2 py-1.5 text-tx3">Every skill is already attached.</div>
+                }
+              </div>
+            </div>
+            <div>
+              @for (r of skills().attached; track r.id) {
+                <div class="lrw k-skill">
+                  <button class="lr !w-auto flex-1" (click)="ui.select(r.id)">
+                    <svg adIcon="grip" class="s text-tx3" style="stroke-width: 2.6"></svg>
+                    <span class="tile sm"><svg adIcon="zap" class="s"></svg></span>
+                    <span class="el min-w-0 flex-1 font-mono text-[11.5px]" [class.c-err]="r.missing">{{ r.name }}</span>
+                    <span class="chip">{{ r.scope }}</span>
+                  </button>
+                  <button class="ib" adTip="Remove from agent" [tipEnd]="true" aria-label="Remove skill from agent" (click)="detach(r.id)">
+                    <svg adIcon="x"></svg>
+                  </button>
+                </div>
+              }
+            </div>
+            <div class="dz">Drag a skill node onto this agent on the canvas to attach it.<br />Removing a skill can be undone until you save.</div>
+          </div>
+        </ng-template>
+      </div>
+      }
+
+      <!-- Source -->
+      @if (has()['src']) {
+      <div ngTabPanel value="src">
+        <ng-template ngTabContent>
+          <div class="flex h-[30px] items-center gap-2 border-b border-line px-3">
+            <span class="el min-w-0 flex-1 font-mono text-[11px] text-tx3">{{ n.file }}</span>
+            <button class="bt gh !h-[22px]" (click)="ui.view.set('source')">Open in source view</button>
+          </div>
+          <div class="overflow-x-auto pt-2 pr-2.5 pb-3">
+            <ad-source-code [lines]="source()" [gutter]="28" [fontSize]="11" />
+          </div>
+        </ng-template>
+      </div>
+      }
+    </div>
+  </div>
+}
