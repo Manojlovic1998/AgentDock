@@ -41,6 +41,8 @@ If Electron exits immediately with `Cannot find module 'electron'`, the shell ha
 - **Overview**, **resource lists**, **Validation**, **Changes** (line diff, discard, save) and **Settings**
   (theme, accent, density, editor, graph and discovery options; stored in `localStorage`).
 - **Command palette** (`Ctrl`/`⌘` + `K`), toasts with Undo, delete confirmation.
+- **Help** (the `?` button in the title bar) — a product tour of the whole app and walkthroughs that
+  teach one task each. The tour is offered once on first launch.
 
 ## Project layout
 
@@ -49,7 +51,8 @@ electron/            main process (frameless window, IPC, workspace file access)
 src/app/
   core/model/        types and pure functions: layout, edge paths, frontmatter, source, diff, validation
   core/data/         ResourceRepository interface, the sample data and the Electron implementation
-  core/state/        signal stores (workspace, UI, viewport, preferences) and app commands
+  core/state/        signal stores (workspace, UI, viewport, preferences, tour) and app commands
+  core/tour/         tour and walkthrough definitions, coach mark placement
   headless/          behaviour-only directives: drag, tooltip, list navigation, menu dismiss
   ui/                small styled primitives: icon, segmented control, switch, source code
   features/          screens: shell, workspace, inspector, overview, browser, validation, changes,
@@ -60,6 +63,37 @@ design/              the original interactive prototype, kept as reference
 
 Behaviour and styling are kept apart: stores and `headless/` directives hold state and interaction,
 Angular Aria supplies tabs and menus, and templates only add Tailwind classes on top.
+
+### Tours and walkthroughs
+
+Three layers, each built on the one below:
+
+- **Coach mark** (`features/overlays/coach-mark.ts`) is the popup itself: a ring around one element
+  and a card with a title, text, step counter and buttons. It knows nothing about tours.
+- **Product tour** is one read-only pass over the app. It dims everything but the current element
+  and is driven with Next / Back, the arrow keys and Escape.
+- **Walkthroughs** teach a task. The app stays usable, and a step that asks for an action has no
+  Next button: it advances when the user has really done it (created the agent, opened the tab).
+
+All tours are data in `core/tour/tours.ts`. To add a step, mark the element with
+`data-tour="some-id"` and add an entry:
+
+```ts
+{
+  title: 'Add an agent',
+  body: 'Click New and choose Agent.',
+  target: 'new',                                    // the data-tour id
+  placement: 'left',                                // preferred side; flips when there is no room
+  prepare: toCanvas,                                // bring the app to where the step happens
+  snapshot: ({ ws }) => ws.counts()['agents'],      // baseline when the step starts
+  done: ({ ws }, before) => ws.counts()['agents'] > (before as number),
+}
+```
+
+Leave out `done` for a step that is only read. `TourStore` (`core/state/tour.store.ts`) runs the
+steps; because every store is a signal, `done` is simply re-evaluated whenever something it read
+changes. `tour-outlet.ts` follows the target on screen, and falls back to a centred card when the
+element is not there. Finished tours and the first-run offer are remembered with the preferences.
 
 ### Reading and writing configuration
 

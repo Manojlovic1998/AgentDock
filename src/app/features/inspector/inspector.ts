@@ -47,6 +47,7 @@ const WIDTH_MAX = 520;
     class: 'insp relative flex min-h-0 max-w-[92vw] flex-none flex-col border-l border-line bg-bg1',
     role: 'complementary',
     'aria-label': 'Inspector',
+    'data-tour': 'inspector',
     '[style.width.px]': 'ui.inspW()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
