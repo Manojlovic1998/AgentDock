@@ -1,6 +1,6 @@
 import { diff } from './diff';
 import { sourceOf } from './source';
-import { Change, Model, Preset, Problem, RelPair, Resource, Status, WorkspaceState } from './types';
+import { Change, FileOp, Model, Preset, Problem, RelPair, Resource, Status, WorkspaceState } from './types';
 
 const splitRel = (r: string): RelPair => r.split('>') as RelPair;
 
@@ -22,9 +22,15 @@ export function buildModel(nodes: Resource[], s: WorkspaceState, useBase = false
   return { all, allBy, list, by, rel: relAll.filter((r) => by[r[0]] && by[r[1]]), relAll };
 }
 
-/** Validation rules. Mirrors the checks shown in the design. */
-export function findProblems(m: Model): Problem[] {
+const DESCRIPTION_LIMIT = 1024;
+
+/**
+ * Validation rules over the current model, merged with the findings the snapshot brought along
+ * (`extra`). A finding about a resource that no longer exists is dropped.
+ */
+export function findProblems(m: Model, extra: Problem[] = []): Problem[] {
   const P: Problem[] = [];
+  const known = extra.filter((p) => !p.target || m.by[p.target]);
   m.rel.forEach((r) => {
     const a = m.by[r[0]];
     const b = m.by[r[1]];
@@ -33,34 +39,22 @@ export function findProblems(m: Model): Problem[] {
         sev: 'err',
         msg: `Agent ${a.name} references skill ${b.name}, which was not found in project, user or plugin scope.`,
         res: a.name,
-        file: a.file + ':8',
+        file: a.file + (a.raw === undefined ? ':8' : ''),
         target: a.id,
         also: b.id,
       });
   });
-  P.push({
-    sev: 'err',
-    msg: 'Hook lint-staged runs scripts/lint-staged.sh, but that file does not exist.',
-    res: 'lint-staged',
-    file: '.claude/settings.json:14',
-    screen: 'hooks',
+  P.push(...known.filter((p) => p.sev !== 'info'));
+  m.list.forEach((n) => {
+    if (n.type === 'skill' && !n.missing && n.desc.length > DESCRIPTION_LIMIT)
+      P.push({
+        sev: 'warn',
+        msg: `Skill ${n.name} has a ${n.desc.length.toLocaleString('en-US')} character description. Descriptions are limited to 1,024 characters.`,
+        res: n.name,
+        file: n.file,
+        target: n.id,
+      });
   });
-  if (m.by['mcp:jira'])
-    P.push({
-      sev: 'warn',
-      msg: 'MCP server jira expands ${JIRA_API_TOKEN}, which is not set in this environment.',
-      res: 'jira',
-      file: '.mcp.json:6',
-      target: 'mcp:jira',
-    });
-  if (m.by['legacy-migration'])
-    P.push({
-      sev: 'warn',
-      msg: 'Skill legacy-migration has a 1,180 character description. Descriptions are limited to 1,024 characters.',
-      res: 'legacy-migration',
-      file: '.claude/skills/legacy-migration/SKILL.md:3',
-      target: 'legacy-migration',
-    });
   m.list.forEach((n) => {
     if (n.type === 'skill' && !n.missing && !m.rel.some((r) => r[1] === n.id))
       P.push({
@@ -71,22 +65,7 @@ export function findProblems(m: Model): Problem[] {
         target: n.id,
       });
   });
-  if (m.by['mem:claude'])
-    P.push({
-      sev: 'info',
-      msg: 'CLAUDE.md is 412 lines. Path-specific guidance loads faster from .claude/rules/.',
-      res: 'CLAUDE.md',
-      file: 'CLAUDE.md',
-      target: 'mem:claude',
-    });
-  if (m.by['typescript-best-practices'])
-    P.push({
-      sev: 'info',
-      msg: 'Skill typescript-best-practices exists in user and project scope. The project copy takes precedence.',
-      res: 'typescript-best-practices',
-      file: '~/.claude/skills/typescript-best-practices/SKILL.md',
-      target: 'typescript-best-practices',
-    });
+  P.push(...known.filter((p) => p.sev === 'info'));
   return P;
 }
 
@@ -103,6 +82,34 @@ export function statusMap(problems: Problem[]): Record<string, Status> {
   return stat;
 }
 
+/** Path of a resource created in the app. It follows the name, which can still change before the first save. */
+function newFile(n: Resource): string {
+  const dir = n.file.startsWith('~/') ? '~/.claude/' : '.claude/';
+  const name = n.name.trim();
+  if (!name || /[\\/:*?"<>|]/.test(name)) return n.file;
+  if (n.type === 'agent') return dir + 'agents/' + name + '.md';
+  if (n.type === 'skill') return dir + 'skills/' + name + '/SKILL.md';
+  return n.file;
+}
+
+/** Turns pending changes into disk operations. Sample presets have no file behind them and are skipped. */
+export function fileOps(changes: Change[], allBy: Record<string, Resource>): FileOp[] {
+  const ops: FileOp[] = [];
+  changes.forEach((c) => {
+    const n = allBy[c.id];
+    if (c.preset || !n) return;
+    if (n.type === 'mcp') {
+      // Servers share one JSON file, so a deletion removes a key instead of the file.
+      if (c.kind === 'D') ops.push({ op: 'jsonRemove', file: c.file, path: ['mcpServers', n.name] });
+    } else if (c.kind === 'D') {
+      ops.push({ op: 'trash', file: n.type === 'skill' ? c.file.replace(/\/SKILL\.md$/, '') : c.file });
+    } else if (c.text !== undefined) {
+      ops.push({ op: 'write', file: c.file, text: c.text, mtime: n.mtime });
+    }
+  });
+  return ops;
+}
+
 /** Pending file changes: generated source of the current model against the saved baseline. */
 export function findChanges(nodes: Resource[], presets: Preset[], s: WorkspaceState): Change[] {
   const cur = buildModel(nodes, s, false);
@@ -116,7 +123,10 @@ export function findChanges(nodes: Resource[], presets: Preset[], s: WorkspaceSt
     const a = isAdded ? [] : sourceOf(base.allBy[n.id], base.relAll, base.allBy);
     const b = isDel ? [] : sourceOf(n, cur.rel, cur.by);
     if (a.join('\n') === b.join('\n')) return;
-    out.push({ id: n.id, kind: isAdded ? 'A' : isDel ? 'D' : 'M', file: n.file, lines: diff(a, b), add: 0, del: 0 });
+    const change: Change = { id: n.id, kind: isAdded ? 'A' : isDel ? 'D' : 'M', file: isAdded ? newFile(n) : n.file, lines: diff(a, b), add: 0, del: 0 };
+    // Scanned files carry their own final newline; generated ones need it added.
+    if (!isDel) change.text = b.join('\n') + (n.raw === undefined ? '\n' : '');
+    out.push(change);
   });
   presets.forEach((p) => {
     if (s.presets.indexOf(p.id) >= 0)

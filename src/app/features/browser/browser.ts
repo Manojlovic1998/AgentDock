@@ -205,14 +205,14 @@ export class Browser {
 
   private nodeRow(n: Resource): Row {
     const st = this.ws.statusOf(n.id);
-    const a = n.type === 'agent' ? n.model : n.type === 'skill' ? n.scope : n.type === 'cmd' ? n.hint : n.type === 'mcp' ? n.transport : 'project';
+    const a = n.type === 'agent' ? n.model : n.type === 'skill' ? n.scope : n.type === 'cmd' ? n.hint : n.type === 'mcp' ? n.transport : (n.scope ?? 'project');
     const b =
       n.type === 'agent'
         ? plural(this.ws.skillsOf(n.id).length, 'skill')
         : n.type === 'rule'
           ? n.paths || 'all files'
           : n.type === 'mem'
-            ? '412 lines'
+            ? plural(n.lines ?? 0, 'line')
             : this.ws
                 .neighbors(n.id)
                 .map((x) => x.name)

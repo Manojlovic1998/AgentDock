@@ -1,13 +1,20 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Commands } from '../../core/state/commands';
 import { PrefsStore } from '../../core/state/prefs.store';
-import { UiStore } from '../../core/state/ui.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
 import { WindowControls } from '../../core/window-controls';
 import { MenuDismiss } from '../../headless/menu-dismiss';
 import { Tip } from '../../headless/tip';
 import { Icon } from '../../ui/icon';
+
+const segments = (path: string): string[] => path.split(/[\\/]/).filter(Boolean);
+
+/** Last two folders of a path, so long absolute paths fit the workspace menu. */
+function shortPath(path: string): string {
+  const parts = segments(path);
+  return parts.length > 3 ? '…/' + parts.slice(-2).join('/') : path;
+}
 
 @Component({
   selector: 'ad-title-bar',
@@ -30,7 +37,7 @@ import { Icon } from '../../ui/icon';
       </button>
       <div ngMenu adMenuDismiss #wsMenu="ngMenu" class="menu top-[30px] left-0 w-[280px]" (itemSelected)="$event?.()">
         <div class="lb px-2 pt-1.5 pb-1">Workspaces</div>
-        @for (w of workspaces; track w.path) {
+        @for (w of workspaces(); track $index) {
           <div ngMenuItem class="mi" [value]="w.pick">
             <svg [adIcon]="w.current ? 'check' : 'folder'"></svg>
             <span class="el min-w-0 flex-1">{{ w.name }}</span>
@@ -98,19 +105,18 @@ export class TitleBar {
   protected readonly ws = inject(WorkspaceStore);
   protected readonly prefs = inject(PrefsStore);
   protected readonly win = inject(WindowControls);
-  private readonly ui = inject(UiStore);
 
-  protected readonly workspaces = [
-    { name: this.ws.snapshot.name, path: this.ws.snapshot.path, current: true, pick: () => {} },
-    { name: 'acme-mobile', path: '~/code/acme-mobile', current: false, pick: () => this.unavailable() },
-    { name: 'User scope', path: '~/.claude', current: false, pick: () => this.unavailable() },
-  ];
+  /** The open workspace followed by recently opened folders. */
+  protected readonly workspaces = computed(() => {
+    const p = this.prefs.prefs();
+    const current = { name: this.ws.snapshot.name, path: shortPath(this.ws.snapshot.path), current: true, pick: () => {} };
+    const recent = p.recent
+      .filter((path) => path !== p.root)
+      .map((path) => ({ name: segments(path).pop() ?? path, path: shortPath(path), current: false, pick: () => void this.ws.openFolder(path) }));
+    return [current, ...recent];
+  });
 
-  protected readonly openFolder = () => this.ui.note('Opening folders is not available yet: this build runs on sample data');
-
-  private unavailable(): void {
-    this.ui.note(`Only ${this.ws.snapshot.name} is populated in this build`);
-  }
+  protected readonly openFolder = () => this.cmd.openFolder();
 
   protected onDoubleClick(e: MouseEvent): void {
     if (e.target === e.currentTarget) this.win.toggleMaximize();

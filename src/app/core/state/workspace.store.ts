@@ -1,9 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { emptySnapshot } from '../data/build-snapshot';
 import { makeAgent, makeSkill } from '../data/mock-data';
 import { ResourceRepository } from '../data/resource-repository';
-import { buildModel, findChanges, findProblems, relTouches, statusMap } from '../model/analysis';
+import { buildModel, fileOps, findChanges, findProblems, relTouches, statusMap } from '../model/analysis';
 import { FILTERS, KIND_LABEL, bounds, filterKey, labelOf, layout, plural } from '../model/graph';
-import { Change, Point, Resource, ResourcePatch, Status, WorkspaceState } from '../model/types';
+import { Change, Point, Resource, ResourcePatch, SaveResult, Status, WorkspaceSnapshot, WorkspaceState } from '../model/types';
 import { PrefsStore } from './prefs.store';
 import { UiStore } from './ui.store';
 import { ViewportStore } from './viewport.store';
@@ -14,6 +15,24 @@ interface UndoSnapshot {
   sel: string[];
 }
 
+/** Editing state for a freshly loaded snapshot: nothing pending except the sample presets. */
+function pristine(snapshot: WorkspaceSnapshot): WorkspaceState {
+  return {
+    rel: snapshot.rel,
+    baseRel: snapshot.rel,
+    over: {},
+    baseOver: {},
+    added: [],
+    addedSaved: [],
+    deleted: [],
+    deletedSaved: [],
+    presets: snapshot.presets.map((p) => p.id),
+  };
+}
+
+/** Message of a failed IPC call, without Electron's "Error invoking remote method" prefix. */
+const cause = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+
 /**
  * The editable configuration graph: resources, relationships and pending edits,
  * with everything derived from them (model, problems, changes, counts).
@@ -23,24 +42,20 @@ export class WorkspaceStore {
   private readonly ui = inject(UiStore);
   private readonly viewport = inject(ViewportStore);
   private readonly prefs = inject(PrefsStore);
-  readonly snapshot = inject(ResourceRepository).load();
+  private readonly repo = inject(ResourceRepository);
 
-  readonly state = signal<WorkspaceState>({
-    rel: this.snapshot.rel,
-    baseRel: this.snapshot.rel,
-    over: {},
-    baseOver: {},
-    added: [],
-    addedSaved: [],
-    deleted: [],
-    deletedSaved: [],
-    presets: this.snapshot.presets.map((p) => p.id),
-  });
+  private readonly loaded = signal<WorkspaceSnapshot>(emptySnapshot());
+  /** Configuration as last read from the repository. Replaced by `reload()`. */
+  get snapshot(): WorkspaceSnapshot {
+    return this.loaded();
+  }
+
+  readonly state = signal<WorkspaceState>(pristine(this.snapshot));
 
   private undoSnapshot: UndoSnapshot | null = null;
 
   readonly model = computed(() => buildModel(this.snapshot.nodes, this.state()));
-  readonly problems = computed(() => findProblems(this.model()));
+  readonly problems = computed(() => findProblems(this.model(), this.snapshot.problems));
   readonly status = computed(() => statusMap(this.problems()));
   readonly changes = computed(() => findChanges(this.snapshot.nodes, this.snapshot.presets, this.state()));
   readonly autoLayout = computed(() => layout(this.model().list));
@@ -69,19 +84,20 @@ export class WorkspaceStore {
   readonly counts = computed<Record<string, number>>(() => {
     const list = this.model().list;
     const count = (t: string) => list.filter((n) => n.type === t && !n.missing).length;
+    const rows = (table: string) => this.snapshot.tables[table]?.rows.length ?? 0;
     return {
       agents: count('agent'),
       skills: count('skill'),
       commands: count('cmd'),
       rules: count('rule'),
       mcp: count('mcp'),
-      claudemd: count('mem') + 2,
-      settingsres: 3,
-      hooks: 3,
-      styles: 2,
-      plugins: 2,
-      memory: 3,
-      other: 2,
+      claudemd: count('mem') + rows('claudemd'),
+      settingsres: rows('settingsres'),
+      hooks: rows('hooks'),
+      styles: rows('styles'),
+      plugins: rows('plugins'),
+      memory: rows('memory'),
+      other: rows('other'),
     };
   });
   readonly total = computed(() => Object.values(this.counts()).reduce((a, n) => a + n, 0));
@@ -121,6 +137,64 @@ export class WorkspaceStore {
 
   fit(): void {
     this.viewport.fit(this.bounds());
+  }
+
+  /* ---------- loading ---------- */
+
+  /** First load, awaited before the app renders. */
+  init(): Promise<void> {
+    return this.reload();
+  }
+
+  /**
+   * Reads the workspace again and drops pending edits. Selection and manual node positions are
+   * kept for resources that still exist in the same folder.
+   */
+  async reload(): Promise<void> {
+    const before = this.snapshot;
+    let next: WorkspaceSnapshot;
+    try {
+      next = await this.repo.load();
+    } catch (e) {
+      const root = this.prefs.prefs().root;
+      next = emptySnapshot(root.split(/[\\/]/).filter(Boolean).pop() ?? '', root);
+      this.ui.note(`Could not scan ${root}: ${cause(e)}`);
+    }
+    const ids = new Set(next.nodes.map((n) => n.id));
+    const moved = next.path !== before.path;
+    this.loaded.set(next);
+    this.state.set(pristine(next));
+    this.undoSnapshot = null;
+    this.ui.sel.update((sel) => sel.filter((id) => ids.has(id)));
+    this.ui.chSel.set(null);
+    this.viewport.pos.update((pos) => (moved ? {} : Object.fromEntries(Object.entries(pos).filter(([id]) => ids.has(id)))));
+    if (moved && this.viewport.fitted) setTimeout(() => this.fit(), 40);
+  }
+
+  /** Scans the current folder again, unless that would throw away unsaved edits. */
+  async rescan(): Promise<void> {
+    if (this.blockedByChanges('rescanning')) return;
+    await this.reload();
+    this.announce(`Rescanned ${this.snapshot.name}`);
+  }
+
+  /** Switches to another project folder; asks for one when no path is given. */
+  async openFolder(path?: string): Promise<void> {
+    if (!this.repo.desktop) return this.ui.note('Opening folders needs the desktop app: the browser build runs on sample data');
+    if (this.blockedByChanges('opening another folder')) return;
+    const root = path ?? (await this.repo.pickFolder());
+    if (!root) return;
+    const p = this.prefs.prefs();
+    this.prefs.set('recent', [root, ...p.recent.filter((r) => r !== root)].slice(0, 6));
+    this.prefs.set('root', root);
+    await this.reload();
+    this.announce(`Opened ${this.snapshot.name}`);
+  }
+
+  private blockedByChanges(doing: string): boolean {
+    const n = this.changes().length;
+    if (n && this.repo.persistent) this.ui.note(`Save or discard ${plural(n, 'pending change')} before ${doing}`);
+    return n > 0 && this.repo.persistent;
   }
 
   /* ---------- actions ---------- */
@@ -274,16 +348,38 @@ export class WorkspaceStore {
     this.ui.sel.set([]);
   }
 
-  /** Makes the current state the saved baseline. No files are written in this build. */
-  saveAll(): void {
-    const n = this.changes().length;
+  /**
+   * Writes pending changes and rescans, so the new baseline is what is on disk. Nothing is
+   * written when any file fails its checks (changed on disk, read-only), and the edits stay pending.
+   * The sample workspace has no files: there the current state just becomes the baseline.
+   */
+  async saveAll(): Promise<void> {
+    const changes = this.changes();
+    const n = changes.length;
     if (!n) return this.ui.note('Nothing to save');
-    const s = this.state();
-    this.act(
-      { baseRel: s.rel, baseOver: s.over, addedSaved: s.added.map((a) => a.id), deletedSaved: s.deleted, presets: [] },
-      `Saved ${plural(n, 'file')} to disk`,
-      false,
-    );
+    if (!this.repo.persistent) {
+      const s = this.state();
+      this.act(
+        { baseRel: s.rel, baseOver: s.over, addedSaved: s.added.map((a) => a.id), deletedSaved: s.deleted, presets: [] },
+        `Saved ${plural(n, 'file')} (sample workspace, nothing written to disk)`,
+        false,
+      );
+      return;
+    }
+    let result: SaveResult;
+    try {
+      result = await this.repo.save(fileOps(changes, this.model().allBy));
+    } catch (e) {
+      result = { ok: false, errors: [{ file: 'workspace', error: cause(e) }] };
+    }
+    if (!result.ok) {
+      const [first, ...more] = result.errors;
+      const rest = more.length ? ` (and ${plural(more.length, 'other file')})` : '';
+      this.ui.dialog.set(null);
+      return this.ui.note(`Not saved: ${first.file} ${first.error}${rest}`);
+    }
+    await this.reload();
+    this.announce(`Saved ${plural(n, 'file')} to disk`);
   }
 
   tidyLayout(): void {

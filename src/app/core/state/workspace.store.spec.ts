@@ -8,11 +8,12 @@ describe('WorkspaceStore', () => {
   let ws: WorkspaceStore;
   let ui: UiStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [{ provide: ResourceRepository, useClass: MockResourceRepository }] });
     ws = TestBed.inject(WorkspaceStore);
     ui = TestBed.inject(UiStore);
+    await ws.init();
   });
 
   it('starts with the sample problems and the preset changes', () => {
@@ -75,9 +76,9 @@ describe('WorkspaceStore', () => {
     expect(change).toMatchObject({ kind: 'M', add: 1, del: 1 });
   });
 
-  it('saves everything as the new baseline, then discards later edits back to it', () => {
+  it('saves everything as the new baseline, then discards later edits back to it', async () => {
     ws.edit('angular-developer', { desc: 'Saved description' });
-    ws.saveAll();
+    await ws.saveAll();
     expect(ws.changes()).toEqual([]);
 
     ws.edit('angular-developer', { desc: 'Unsaved description' });

@@ -101,6 +101,8 @@ export class CommandPalette {
       ['Auto-layout graph', 'layout', () => this.cmd.autoLayout()],
       ['Run validation', 'shield', () => this.cmd.runValidation()],
       ['Save all changes', 'save', () => this.cmd.saveAll()],
+      ['Rescan workspace', 'folder', () => this.cmd.rescan()],
+      ['Open folder…', 'folder', () => this.cmd.openFolder()],
       ['Open settings', 'gear', () => this.cmd.go('settings')],
     ] as [string, IconName, () => void][]
   ).map(([label, icon, run]) => ({ type: 'x', icon, label, hint: 'Command', mono: false, run }));

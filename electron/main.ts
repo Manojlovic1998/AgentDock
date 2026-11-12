@@ -1,5 +1,6 @@
 import { BrowserWindow, app, ipcMain, shell } from 'electron';
 import * as path from 'node:path';
+import { registerWorkspaceIpc } from './workspace';
 
 const DEV_URL = process.env['AGENTDOCK_DEV_URL'];
 
@@ -45,6 +46,7 @@ ipcMain.on('window:toggle-maximize', (e) => {
   else win.maximize();
 });
 ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close());
+registerWorkspaceIpc();
 
 void app.whenReady().then(() => {
   createWindow();

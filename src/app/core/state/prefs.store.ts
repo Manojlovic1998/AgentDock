@@ -17,7 +17,10 @@ export interface Prefs {
   fmt: boolean;
   autosave: boolean;
   confirm: boolean;
+  /** Project folder to scan; empty shows the sample workspace. */
   root: string;
+  /** Previously opened project folders, newest first. */
+  recent: string[];
   scanUser: boolean;
   scanPlugins: boolean;
   managed: boolean;
@@ -41,7 +44,8 @@ const DEFAULTS: Prefs = {
   fmt: true,
   autosave: false,
   confirm: true,
-  root: '~/code/acme-platform',
+  root: '',
+  recent: [],
   scanUser: true,
   scanPlugins: true,
   managed: false,
@@ -57,9 +61,14 @@ interface Stored {
   prefs: Prefs;
 }
 
+/** Default project root of earlier builds, which only named the sample workspace. */
+const SAMPLE_ROOT = '~/code/acme-platform';
+
 function read(): Partial<Stored> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Stored>;
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Stored>;
+    if (stored.prefs?.root === SAMPLE_ROOT) stored.prefs.root = '';
+    return stored;
   } catch {
     return {};
   }
