@@ -182,6 +182,18 @@ watched, because Claude Code rewrites it constantly; use **Rescan workspace** fo
 - Installers are not code signed and there is no auto-update. macOS and Linux builds are configured
   but only the Windows installer has been run so far.
 
+## Website
+
+The project site lives in [site/](site/) (plain HTML and CSS, no build step) and is published to
+GitHub Pages by `.github/workflows/pages.yml` when `site/` changes on `main`.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for the terms and [NOTICE](NOTICE) for the copyright notice.
+
+## Trademarks and affiliation
+
+AgentDock is an independent open-source project. It is not affiliated with, endorsed by, sponsored by
+or otherwise connected to Anthropic, PBC. "Anthropic", "Claude" and "Claude Code" are trademarks of
+Anthropic, PBC; they are used here only to describe which configuration files AgentDock edits.
+AgentDock does not use Anthropic's logos or branding.
