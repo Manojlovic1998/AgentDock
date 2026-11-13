@@ -65,6 +65,10 @@ export class ContextMenu {
       { label: 'Detach all relationships', icon: 'unlink', run: () => this.ws.detachAll(n.id) },
       { label: 'Delete', icon: 'trash', danger: true, sep: true, run: () => this.cmd.askDelete(n.id) },
     ];
+    // Only agents and skills can go to another project; the entry sits with the other file actions.
+    if (n.type === 'agent' || n.type === 'skill') {
+      items.splice(5, 0,{ label: 'Copy to another project…', icon: 'folder', run: () => this.cmd.askCopy(n.id) });
+    }
     return { x: ctx.x, y: ctx.y, title: n.file, items };
   });
 

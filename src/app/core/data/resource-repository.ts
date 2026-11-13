@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { FileOp, SaveResult, WorkspaceSnapshot } from '../model/types';
+import { CopyItem, CopyResult, FileOp, SaveResult, WorkspaceSnapshot } from '../model/types';
 import { PrefsStore } from '../state/prefs.store';
 import { AgentDockBridge } from '../window-controls';
 import { buildSnapshot, hookScripts } from './build-snapshot';
@@ -18,6 +18,23 @@ export abstract class ResourceRepository {
   abstract save(ops: FileOp[]): Promise<SaveResult>;
   /** Asks for a project folder. Resolves to null when cancelled or unavailable. */
   abstract pickFolder(): Promise<string | null>;
+  /**
+   * Checks which resources another project already has.
+   *
+   * @param dest - Folder of the other project.
+   * @param items - Resources about to be copied there.
+   * @returns One flag per item, in the same order: true when the destination has that agent or skill.
+   */
+  abstract existsIn(dest: string, items: CopyItem[]): Promise<boolean[]>;
+  /**
+   * Copies agents and skills of the loaded workspace, as they are on disk, into another project.
+   *
+   * @param dest - Folder of the other project.
+   * @param items - Resources to copy.
+   * @param replace - Replace resources the destination already has, instead of skipping them.
+   * @returns Which files were copied, skipped or failed. Rejects when the workspace has no files.
+   */
+  abstract copyTo(dest: string, items: CopyItem[], replace: boolean): Promise<CopyResult>;
 }
 
 @Injectable()
@@ -35,6 +52,14 @@ export class MockResourceRepository extends ResourceRepository {
 
   pickFolder(): Promise<string | null> {
     return Promise.resolve(null);
+  }
+
+  existsIn(_dest: string, items: CopyItem[]): Promise<boolean[]> {
+    return Promise.resolve(items.map(() => false));
+  }
+
+  copyTo(): Promise<CopyResult> {
+    return Promise.reject(new Error('the sample workspace has no files to copy'));
   }
 }
 
@@ -71,5 +96,14 @@ export class ElectronResourceRepository extends ResourceRepository {
 
   pickFolder(): Promise<string | null> {
     return this.bridge.pickFolder();
+  }
+
+  existsIn(dest: string, items: CopyItem[]): Promise<boolean[]> {
+    return this.bridge.exists(dest, items.map((i) => i.file));
+  }
+
+  copyTo(dest: string, items: CopyItem[], replace: boolean): Promise<CopyResult> {
+    if (!this.root) return Promise.reject(new Error('the sample workspace has no files to copy'));
+    return this.bridge.copy(this.root, dest, items, replace);
   }
 }

@@ -317,7 +317,101 @@ async function applyOps(rootInput: string, ops: FileOp[]) {
   return { ok: !errors.length, errors };
 }
 
+/* ---------- copying to another project ---------- */
+
+/**
+ * One agent or skill to copy. Mirrors `CopyItem` in src/app/core/model/types.ts.
+ */
+interface CopyItem {
+  kind: 'agent' | 'skill';
+  /** Project-relative path of the agent file, or of the skill's `SKILL.md`. */
+  file: string;
+}
+
+/** Folder below `.claude/` that each copyable kind lives in. */
+const COPY_DIR: Record<CopyItem['kind'], string> = { agent: 'agents', skill: 'skills' };
+
+/**
+ * Checks one copy without changing anything.
+ *
+ * @param from - Absolute folder of the project the resource is in.
+ * @param to - Absolute folder of the project it goes to.
+ * @param item - The resource to copy.
+ * @param replace - Whether a resource that already exists in the destination is replaced.
+ * @returns The work to do, or null when the destination already has the resource and it is kept.
+ * @throws Error with a message that follows the file name ("is not ...") when the item is not an
+ * agent or skill inside the source project's `.claude` folder, or no longer exists.
+ */
+async function prepareCopy(from: string, to: string, item: CopyItem, replace: boolean): Promise<(() => Promise<void>) | null> {
+  const dir = COPY_DIR[item.kind];
+  if (!dir) throw new Error('is not an agent or a skill');
+  const base = path.join(from, '.claude', dir);
+  const file = path.resolve(from, item.file);
+  if (!within(base, file) || path.relative(base, file) === '') throw new Error(`is not inside .claude/${dir} of this project`);
+  if (!(await stat(file))?.isFile()) throw new Error('no longer exists on disk');
+
+  // An agent is one file. A skill is its folder: SKILL.md plus the scripts and references next to it.
+  const isSkill = item.kind === 'skill';
+  if (isSkill && (path.basename(file) !== 'SKILL.md' || path.relative(base, path.dirname(file)) === '')) throw new Error('is not the SKILL.md of a skill folder');
+  const source = isSkill ? path.dirname(file) : file;
+  const dest = path.join(to, '.claude', dir, path.relative(base, source));
+
+  const existing = await stat(dest);
+  if (existing && !replace) return null;
+  return async () => {
+    if (existing) await shell.trashItem(dest);
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    if (isSkill) await fs.cp(source, dest, { recursive: true, filter: async (src) => !(await fs.lstat(src)).isSymbolicLink() });
+    else await fs.copyFile(source, dest);
+  };
+}
+
+/**
+ * Copies agents and skills from one project into the `.claude` folder of another.
+ *
+ * @remarks
+ * Like {@link applyOps}, every item is checked before anything is written, so a bad request
+ * copies nothing. A replaced agent file or skill folder goes to the Recycle Bin / Trash.
+ *
+ * @param fromInput - Project folder the resources are in.
+ * @param toInput - Project folder to copy into. Must exist and differ from the source.
+ * @param items - Resources to copy.
+ * @param replace - Replace resources the destination already has, instead of skipping them.
+ * @returns Which files were copied, skipped or failed. Mirrors `CopyResult` in types.ts.
+ */
+async function copyResources(fromInput: string, toInput: string, items: CopyItem[], replace: boolean) {
+  const from = path.resolve(expand(fromInput));
+  const to = path.resolve(expand(toInput));
+  const copied: string[] = [];
+  const skipped: string[] = [];
+  const errors: SaveError[] = [];
+  if (!(await stat(to))?.isDirectory()) return { copied, skipped, errors: [{ file: toInput, error: 'is not a folder' }] };
+  if (path.relative(from, to) === '') return { copied, skipped, errors: [{ file: toInput, error: 'is the project that is already open' }] };
+
+  const work: [CopyItem, () => Promise<void>][] = [];
+  for (const item of items) {
+    try {
+      const run = await prepareCopy(from, to, item, replace);
+      if (run) work.push([item, run]);
+      else skipped.push(item.file);
+    } catch (e) {
+      errors.push({ file: item.file, error: (e as Error).message });
+    }
+  }
+  if (errors.length) return { copied, skipped: [], errors };
+  for (const [item, run] of work) {
+    try {
+      await run();
+      copied.push(item.file);
+    } catch (e) {
+      errors.push({ file: item.file, error: 'could not be copied: ' + (e as Error).message });
+    }
+  }
+  return { copied, skipped, errors };
+}
+
 export function registerWorkspaceIpc(): void {
+  ipcMain.handle('workspace:copy', (_e, from: string, to: string, items: CopyItem[], replace: boolean) => copyResources(from, to, items, !!replace));
   ipcMain.handle('workspace:pick', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     const options = { title: 'Open project folder', properties: ['openDirectory' as const] };

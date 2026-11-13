@@ -104,6 +104,17 @@ const STATIC_ICON: Record<string, IconName> = {
                 <button class="ib" adTip="Edit" [tipEnd]="true" aria-label="Edit" (click)="cmd.focusNode(id, r.editTab)">
                   <svg adIcon="pencil"></svg>
                 </button>
+                @if (r.type === 'agent' || r.type === 'skill') {
+                  <button
+                    class="ib"
+                    adTip="Copy to another project"
+                    [tipEnd]="true"
+                    aria-label="Copy to another project"
+                    (click)="cmd.askCopy(id)"
+                  >
+                    <svg adIcon="copy"></svg>
+                  </button>
+                }
                 <button class="ib !text-err" adTip="Delete" [tipEnd]="true" aria-label="Delete" (click)="cmd.askDelete(id)">
                   <svg adIcon="trash"></svg>
                 </button>

@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { MockResourceRepository, ResourceRepository } from '../data/resource-repository';
+import { PrefsStore } from './prefs.store';
 import { UiStore } from './ui.store';
 import { ViewportStore } from './viewport.store';
 import { WorkspaceStore } from './workspace.store';
@@ -95,6 +97,41 @@ describe('WorkspaceStore', () => {
     expect(ws.visible().some((n) => n.type === 'skill')).toBe(false);
     expect(ws.filters().find((f) => f.type === 'skill')).toMatchObject({ on: false });
     expect(ws.filters().find((f) => f.type === 'rule')?.n).toBe(4);
+  });
+
+  describe('copying to another project', () => {
+    const items = [
+      { kind: 'agent' as const, file: '.claude/agents/code-reviewer.md' },
+      { kind: 'skill' as const, file: '.claude/skills/code-review/SKILL.md' },
+    ];
+
+    it('reports what was copied and remembers the destination', async () => {
+      const repo = TestBed.inject(ResourceRepository);
+      const copyTo = vi.spyOn(repo, 'copyTo').mockResolvedValue({ copied: [items[0].file], skipped: [items[1].file], errors: [] });
+
+      expect(await ws.copyTo('C:\\code\\billing-api', items, false)).toBe(true);
+
+      expect(copyTo).toHaveBeenCalledWith('C:\\code\\billing-api', items, false);
+      expect(ui.toast()?.msg).toBe('Copied 1 resource to billing-api (1 skipped: already there)');
+      expect(TestBed.inject(PrefsStore).prefs().recent[0]).toBe('C:\\code\\billing-api');
+      expect(ws.changes()).toHaveLength(ws.snapshot.presets.length);
+    });
+
+    it('explains a failed copy and leaves the recent folders alone', async () => {
+      const repo = TestBed.inject(ResourceRepository);
+      vi.spyOn(repo, 'copyTo').mockResolvedValue({ copied: [], skipped: [], errors: [{ file: items[0].file, error: 'no longer exists on disk' }] });
+
+      expect(await ws.copyTo('/code/billing-api', items, true)).toBe(false);
+
+      expect(ui.toast()?.msg).toBe('Not copied: .claude/agents/code-reviewer.md no longer exists on disk');
+      expect(TestBed.inject(PrefsStore).prefs().recent).toEqual([]);
+    });
+
+    it('cannot copy from the sample workspace', async () => {
+      expect(ws.canCopy).toBe(false);
+      expect(await ws.copyTo('/code/billing-api', items, false)).toBe(false);
+      expect(ui.toast()?.msg).toContain('sample workspace has no files');
+    });
   });
 
   it('fits the canvas to the graph bounds', () => {
