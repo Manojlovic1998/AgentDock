@@ -105,6 +105,8 @@ export interface WorkspaceSnapshot {
 export type FileOp =
   | { op: 'write'; file: string; text: string; mtime?: number }
   | { op: 'trash'; file: string }
+  /** Moves a scanned file to a new path; refused if the target exists or the file changed since the scan. */
+  | { op: 'move'; file: string; to: string; mtime: number }
   | { op: 'jsonRemove'; file: string; path: string[]; mtime?: number }
   /** Sets one value inside a JSON file, creating the file and the objects on the way when missing. */
   | { op: 'jsonSet'; file: string; path: string[]; value: unknown; mtime?: number };

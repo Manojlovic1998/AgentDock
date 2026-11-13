@@ -112,7 +112,10 @@ export class Inspector {
   protected readonly nameHint = computed(() => {
     const n = this.one();
     if (!n || n.type === 'agent' || n.type === 'skill') return '';
-    if (this.nameLocked()) return n.type === 'mcp' ? 'The name is the key in the file and cannot be changed here.' : 'The name is the file path and cannot be changed here.';
+    if (this.nameLocked()) {
+      if (n.type === 'mem') return '';
+      return n.type === 'mcp' ? 'The name is the key in the file. Use Rename to change it.' : 'The name is the file path. Use Rename to change it.';
+    }
     if (!validName(n)) return n.type === 'mcp' ? 'Use a name without spaces.' : 'This name cannot be used as a file name.';
     return n.type === 'mcp' ? '' : 'Use a colon for a subfolder: git:commit is saved as git/commit.md.';
   });

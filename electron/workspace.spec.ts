@@ -243,6 +243,68 @@ describe('apply: files', () => {
   });
 });
 
+describe('apply: move', () => {
+  it('moves a scanned file, creating the folders of the new path and pruning the emptied ones', async () => {
+    const root = project();
+    const abs = put(path.join(root, '.claude/commands/git/old/commit.md'), 'x\n');
+    const result = await apply(root, [{ op: 'move', file: '.claude/commands/git/old/commit.md', to: '.claude/commands/vcs/commit.md', mtime: mtimeOf(abs) }]);
+    expect(result).toEqual({ ok: true, errors: [] });
+    expect(read(path.join(root, '.claude/commands/vcs/commit.md'))).toBe('x\n');
+    expect(exists(abs)).toBe(false);
+    expect(exists(path.join(root, '.claude/commands/git'))).toBe(false);
+    expect(exists(path.join(root, '.claude/commands'))).toBe(true);
+  });
+
+  it('never removes the commands folder itself', async () => {
+    const root = project();
+    const abs = put(path.join(root, '.claude/commands/a.md'), 'x\n');
+    await apply(root, [{ op: 'move', file: '.claude/commands/a.md', to: '.claude/commands/b.md', mtime: mtimeOf(abs) }]);
+    expect(exists(path.join(root, '.claude/commands/b.md'))).toBe(true);
+  });
+
+  it('refuses an existing target and a file changed since the scan, and moves nothing', async () => {
+    const root = project();
+    const a = put(path.join(root, '.claude/rules/a.md'), 'a\n');
+    put(path.join(root, '.claude/rules/b.md'), 'b\n');
+    const taken = await apply(root, [{ op: 'move', file: '.claude/rules/a.md', to: '.claude/rules/b.md', mtime: mtimeOf(a) }]);
+    expect(taken.errors[0].error).toContain('already exists');
+    const stale = await apply(root, [{ op: 'move', file: '.claude/rules/a.md', to: '.claude/rules/c.md', mtime: mtimeOf(a) - 5000 }]);
+    expect(stale.errors[0].error).toContain('changed on disk');
+    const gone = await apply(root, [{ op: 'move', file: '.claude/rules/nope.md', to: '.claude/rules/d.md', mtime: 1 }]);
+    expect(gone.errors[0].error).toContain('removed on disk');
+    expect(read(a)).toBe('a\n');
+    expect(read(path.join(root, '.claude/rules/b.md'))).toBe('b\n');
+  });
+
+  it('refuses a target outside the editable configuration', async () => {
+    const root = project();
+    const a = put(path.join(root, '.claude/rules/a.md'), 'a\n');
+    const result = await apply(root, [{ op: 'move', file: '.claude/rules/a.md', to: 'README.md', mtime: mtimeOf(a) }]);
+    expect(result.errors[0].error).toContain('read-only');
+    expect(exists(a)).toBe(true);
+    expect(exists(path.join(root, 'README.md'))).toBe(false);
+  });
+
+  it('re-keys a server and rewrites an agent in one batch, or neither', async () => {
+    const root = project();
+    const mcp = put(path.join(root, '.mcp.json'), JSON.stringify({ mcpServers: { old: { command: 'x' }, keep: { command: 'y' } } }, null, 2) + '\n');
+    const agent = put(path.join(root, '.claude/agents/a.md'), '---\nmcpServers: [old]\n---\n');
+    const ops = (agentMtime: number) => [
+      { op: 'jsonRemove', file: '.mcp.json', path: ['mcpServers', 'old'], mtime: mtimeOf(mcp) },
+      { op: 'jsonSet', file: '.mcp.json', path: ['mcpServers', 'new'], value: { command: 'x' }, mtime: mtimeOf(mcp) },
+      { op: 'write', file: '.claude/agents/a.md', text: '---\nmcpServers: [new]\n---\n', mtime: agentMtime },
+    ];
+
+    const refused = await apply(root, ops(mtimeOf(agent) - 5000));
+    expect(refused.ok).toBe(false);
+    expect(Object.keys(JSON.parse(read(mcp)).mcpServers)).toEqual(['old', 'keep']);
+
+    expect((await apply(root, ops(mtimeOf(agent)))).ok).toBe(true);
+    expect(Object.keys(JSON.parse(read(mcp)).mcpServers).sort()).toEqual(['keep', 'new']);
+    expect(read(agent)).toContain('[new]');
+  });
+});
+
 describe('apply: JSON edits', () => {
   const file = '.mcp.json';
 

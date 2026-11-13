@@ -8,6 +8,7 @@ import { parseResource, toList } from '../model/frontmatter';
 import { FILTERS, KIND_LABEL, bounds, filterKey, labelOf, layout, plural } from '../model/graph';
 import { HookAt, HookFields, listHooks, removeHook, setHook } from '../model/hooks';
 import { McpConfig, mcpFields } from '../model/mcp';
+import { planRename } from '../model/rename';
 import { nameFromFile } from '../model/source';
 import {
   Change,
@@ -738,6 +739,58 @@ export class WorkspaceStore {
     }
     if (quiet) this.ui.record(`Saved ${plural(n, 'file')} to disk automatically`);
     else this.announce(`Saved ${plural(n, 'file')} to disk`);
+  }
+
+  /**
+   * Renames a command, rule or MCP server on disk right away, and rewrites what refers to it.
+   *
+   * @remarks
+   * Unlike field edits this is not staged: the file is moved (or the server re-keyed together with
+   * the agents that list it) in one batch that is refused as a whole if any file changed since the
+   * scan. It needs a clean workspace, so no pending edit is lost by the rescan that follows.
+   *
+   * @param id - Resource to rename.
+   * @param name - The new name.
+   * @returns Whether the rename was written. A reason is shown to the user otherwise.
+   */
+  async rename(id: string, name: string): Promise<boolean> {
+    if (this.saving()) return false;
+    const n = this.model().by[id];
+    if (!n) return false;
+    if (!this.repo.persistent) {
+      this.ui.note('Renaming needs a project folder: the sample workspace has no files');
+      return false;
+    }
+    if (this.blockedByChanges('renaming')) return false;
+    const result = planRename(n, name, this.model().all);
+    if ('error' in result) {
+      this.ui.note(result.error);
+      return false;
+    }
+    this.saving.set(true);
+    try {
+      let saved: SaveResult;
+      try {
+        saved = await this.repo.save(result.plan.ops);
+      } catch (e) {
+        saved = { ok: false, errors: [{ file: 'workspace', error: cause(e) }] };
+      }
+      if (!saved.ok) {
+        const [first] = saved.errors;
+        this.ui.note(`Not renamed: ${first.file} ${first.error}`);
+        return false;
+      }
+      await this.reload();
+    } finally {
+      this.saving.set(false);
+    }
+    const to = n.type + ':' + name.trim();
+    this.ui.sel.set([to]);
+    const others = result.plan.files.length - 1;
+    this.ui.ctx.set(null);
+    this.ui.rename.set(null);
+    this.announce(`Renamed ${n.name} to ${name.trim()}` + (n.type === 'mcp' && others > 0 ? ` and updated ${plural(others, 'agent')}` : ''));
+    return true;
   }
 
   /** What the status bar says about file watching. */

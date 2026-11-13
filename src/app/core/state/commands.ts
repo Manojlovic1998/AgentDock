@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { copyPlan } from '../model/copy';
 import { plural } from '../model/graph';
+import { renameBlocker } from '../model/rename';
 import { Kind, Problem } from '../model/types';
 import { PrefsStore } from './prefs.store';
 import { InspectorTab, UiStore } from './ui.store';
@@ -88,6 +89,16 @@ export class Commands {
     this.ui.ctx.set(null);
     if (this.ws.confirmDelete) this.ui.dialog.set(id);
     else this.ws.remove(id);
+  }
+
+  /** Opens the rename dialog for a command, rule or MCP server, or says why it cannot be renamed. */
+  askRename(id: string): void {
+    this.ui.ctx.set(null);
+    const n = this.ws.model().by[id];
+    if (!n) return;
+    const why = renameBlocker(n);
+    if (why) return this.ui.note(why);
+    this.ui.rename.set(id);
   }
 
   /**
