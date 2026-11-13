@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "Visual configuration editor for Claude Code agents, skills, commands, rules and MCP servers.",
   "main": "dist-electron/main.js",
+  "author": "Nemanja Manojlovic",
+  "desktopName": "agent-dock.desktop",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -14,9 +16,9 @@
     "electron:dev": "npm run electron:compile && concurrently -k -n ng,electron \"ng serve --port 4200\" \"wait-on http://localhost:4200 && cross-env-shell AGENTDOCK_DEV_URL=http://localhost:4200 electron .\"",
     "electron:start": "npm run build && npm run electron:compile && electron .",
     "electron:build": "npm run build && npm run electron:compile && electron-builder",
-    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win",
-    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
-    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux",
+    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win --publish never",
+    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac --publish never",
+    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux --publish never",
     "icon": "node scripts/make-icon.mjs"
   },
   "build": {
@@ -44,6 +46,7 @@
     "linux": {
       "target": "AppImage",
       "category": "Development",
+      "syncDesktopName": true,
       "icon": "build/icon.png"
     }
   },
