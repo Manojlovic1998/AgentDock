@@ -9,6 +9,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false",
+    "test:electron": "vitest run -c vitest.electron.config.mts",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "npm run electron:compile && concurrently -k -n ng,electron \"ng serve --port 4200\" \"wait-on http://localhost:4200 && cross-env-shell AGENTDOCK_DEV_URL=http://localhost:4200 electron .\"",
     "electron:start": "npm run build && npm run electron:compile && electron .",
