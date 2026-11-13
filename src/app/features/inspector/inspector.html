@@ -173,7 +173,7 @@
                 <span class="text-[11px] text-tx3">{{ hint }}</span>
               }
             </label>
-            @if (nameLocked() && n.type !== 'mem') {
+            @if (nameLocked()) {
               <button class="bt self-start" (click)="cmd.askRename(n.id)"><svg adIcon="pencil"></svg>Rename…</button>
             }
             @if (n.type === 'agent' || n.type === 'skill' || n.type === 'cmd') {
