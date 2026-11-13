@@ -54,9 +54,22 @@ export class Commands {
   focusNode(id: string, tab: InspectorTab = 'ov'): void {
     this.ui.view.set('graph');
     this.ui.sel.set([id]);
+    this.ui.doc.set(null);
     this.ui.inspOpen.set(true);
     this.ui.tab.set(tab);
     this.ui.q.set('');
+    this.go('workspace');
+  }
+
+  /**
+   * Opens a file that has no graph node (a settings file, output style or memory file) in the
+   * Source view.
+   *
+   * @param file - Display path of the file.
+   */
+  openDoc(file: string): void {
+    this.ui.doc.set(file);
+    this.ui.view.set('source');
     this.go('workspace');
   }
 
@@ -65,9 +78,10 @@ export class Commands {
     else this.go(p.screen ?? 'validation');
   }
 
-  addNode(type: 'agent' | 'skill'): void {
+  /** Creates a resource of the given kind and opens it for editing. */
+  addNode(type: Kind): void {
     const id = this.ws.addNode(type);
-    this.focusNode(id, 'cf');
+    if (id) this.focusNode(id, 'cf');
   }
 
   askDelete(id: string): void {

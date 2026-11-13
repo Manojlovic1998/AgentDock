@@ -1,4 +1,4 @@
-import { parse, stringify } from 'yaml';
+import { isMap, isScalar, parse, parseDocument, stringify } from 'yaml';
 import { Kind, ResourcePatch } from './types';
 
 /** A markdown file split so that joining the parts gives back the exact original text. */
@@ -65,6 +65,56 @@ export function patchHead(head: string[], key: string, value: unknown): string[]
   return [...head.slice(0, start), ...lines, ...head.slice(end)];
 }
 
+/** Order of the known frontmatter keys after normalizing; other keys follow in the order they had. */
+const KEY_ORDER = ['name', 'description', 'argument-hint', 'model', 'tools', 'allowed-tools', 'disallowedTools', 'permissionMode', 'skills', 'mcpServers', 'paths'];
+
+/**
+ * Rewrites frontmatter in a canonical form: known keys first in a fixed order, two-space
+ * indentation, comments kept with the key they precede.
+ *
+ * @param head - Lines between the `---` fences.
+ * @returns The normalized lines, or `head` itself when it is not a readable YAML mapping.
+ */
+export function normalizeHead(head: string[]): string[] {
+  let doc: ReturnType<typeof parseDocument>;
+  try {
+    doc = parseDocument(head.join('\n'));
+  } catch {
+    return head;
+  }
+  if (doc.errors.length || !isMap(doc.contents)) return head;
+  const rank = (key: unknown): number => {
+    const at = KEY_ORDER.indexOf(isScalar(key) ? String(key.value) : '');
+    return at < 0 ? KEY_ORDER.length : at;
+  };
+  const items = doc.contents.items;
+  // A comment above the first key is stored on the document, so it would stay on top after sorting.
+  const first = items[0]?.key;
+  if (doc.commentBefore && isScalar(first)) {
+    first.commentBefore = doc.commentBefore + (first.commentBefore ? '\n' + first.commentBefore : '');
+    doc.commentBefore = null;
+  }
+  doc.contents.items = items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => rank(a.item.key) - rank(b.item.key) || a.i - b.i)
+    .map((x) => x.item);
+  const out = doc.toString({ indent: 2, lineWidth: 0 }).replace(/\n+$/, '');
+  return out ? out.split('\n') : head;
+}
+
+/**
+ * Normalizes the frontmatter of a markdown file, leaving the body untouched.
+ *
+ * @param lines - The file as lines.
+ * @returns The lines with {@link normalizeHead} applied, or `lines` itself when nothing changes.
+ */
+export function normalizeSource(lines: string[]): string[] {
+  const doc = splitDoc(lines.join('\n'));
+  if (!doc.head) return lines;
+  const head = normalizeHead(doc.head);
+  return head === doc.head ? lines : joinDoc({ ...doc, head }).split('\n');
+}
+
 /** A frontmatter list written either as a YAML sequence or as a comma-separated string. */
 export function toList(v: unknown): string[] | undefined {
   if (v == null) return undefined;
@@ -84,7 +134,8 @@ export interface Parsed {
   error?: string;
 }
 
-const firstText = (body: string): string =>
+/** First line of a text that is not blank and not a heading. */
+export const firstText = (body: string): string =>
   body
     .split('\n')
     .map((l) => l.trim())
@@ -119,9 +170,11 @@ export function parseResource(type: Kind, raw: string): Parsed {
     fields.desc = str(data['description']) ?? firstText(doc.body);
     // An unquoted "[ticket-key]" is a YAML sequence; show it the way it was typed.
     fields.hint = Array.isArray(hint) ? '[' + hint.join(', ') + ']' : (str(hint) ?? '');
+    fields.body = doc.body;
   } else if (type === 'rule') {
     fields.desc = str(data['description']) ?? firstText(doc.body);
     fields.paths = (toList(data['paths']) ?? []).join(', ');
+    fields.body = doc.body;
   }
   const parsed: Parsed = { doc, data, fields, error };
   if (cache.size > 2000) cache.clear();

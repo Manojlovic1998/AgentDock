@@ -23,11 +23,11 @@ export abstract class ResourceRepository {
    *
    * @param dest - Folder of the other project.
    * @param items - Resources about to be copied there.
-   * @returns One flag per item, in the same order: true when the destination has that agent or skill.
+   * @returns One flag per item, in the same order: true when the destination has that resource.
    */
   abstract existsIn(dest: string, items: CopyItem[]): Promise<boolean[]>;
   /**
-   * Copies agents and skills of the loaded workspace, as they are on disk, into another project.
+   * Copies agents, skills, commands, rules and MCP servers of the loaded workspace, as they are on disk, into another project.
    *
    * @param dest - Folder of the other project.
    * @param items - Resources to copy.
@@ -35,6 +35,19 @@ export abstract class ResourceRepository {
    * @returns Which files were copied, skipped or failed. Rejects when the workspace has no files.
    */
   abstract copyTo(dest: string, items: CopyItem[], replace: boolean): Promise<CopyResult>;
+  /**
+   * Starts or stops watching the files of the loaded workspace for changes made outside the app.
+   * Called again after every load, because the set of folders to watch follows the scan.
+   *
+   * @param enabled - False stops watching. Nothing is watched for a workspace without files.
+   * @returns Whether files are being watched now.
+   */
+  abstract watch(enabled: boolean): Promise<boolean>;
+  /**
+   * Registers the listener called when watched files change. Saves made through {@link save}
+   * do not trigger it.
+   */
+  abstract onExternalChange(listener: () => void): void;
 }
 
 @Injectable()
@@ -61,6 +74,14 @@ export class MockResourceRepository extends ResourceRepository {
   copyTo(): Promise<CopyResult> {
     return Promise.reject(new Error('the sample workspace has no files to copy'));
   }
+
+  watch(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  onExternalChange(): void {
+    /* the sample workspace has no files that could change */
+  }
 }
 
 /** Reads and writes real configuration through the Electron bridge. Shows the sample until a folder is chosen. */
@@ -83,7 +104,7 @@ export class ElectronResourceRepository extends ResourceRepository {
     this.root = '';
     if (!root) return ACME_SNAPSHOT;
     const ignore = p.ignore.split(',').map((s) => s.trim()).filter(Boolean);
-    const scan = await this.bridge.scan(root, { user: p.scanUser, plugins: p.scanPlugins, ignore });
+    const scan = await this.bridge.scan(root, { user: p.scanUser, plugins: p.scanPlugins, managed: p.managed, ignore });
     const scripts = hookScripts(scan);
     const found = scripts.length ? await this.bridge.exists(scan.root, scripts) : [];
     this.root = scan.root;
@@ -99,11 +120,26 @@ export class ElectronResourceRepository extends ResourceRepository {
   }
 
   existsIn(dest: string, items: CopyItem[]): Promise<boolean[]> {
-    return this.bridge.exists(dest, items.map((i) => i.file));
+    return this.bridge.has(dest, items);
   }
 
   copyTo(dest: string, items: CopyItem[], replace: boolean): Promise<CopyResult> {
     if (!this.root) return Promise.reject(new Error('the sample workspace has no files to copy'));
     return this.bridge.copy(this.root, dest, items, replace);
+  }
+
+  async watch(enabled: boolean): Promise<boolean> {
+    // A bridge from an older preload script has no watcher: the app then simply does not watch.
+    if (!this.bridge.watch) return false;
+    if (!enabled || !this.root) {
+      await this.bridge.unwatch();
+      return false;
+    }
+    await this.bridge.watch(this.root, this.prefs.prefs().scanUser);
+    return true;
+  }
+
+  onExternalChange(listener: () => void): void {
+    this.bridge.onChanged?.(listener);
   }
 }

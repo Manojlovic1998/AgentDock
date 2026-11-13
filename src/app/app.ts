@@ -8,6 +8,7 @@ import { CommandPalette } from './features/overlays/command-palette';
 import { ContextMenu } from './features/overlays/context-menu';
 import { CopyDialog } from './features/overlays/copy-dialog';
 import { DeleteDialog } from './features/overlays/delete-dialog';
+import { HookDialog } from './features/overlays/hook-dialog';
 import { ToastOutlet } from './features/overlays/toast';
 import { TourOutlet } from './features/overlays/tour-outlet';
 import { BottomPanel } from './features/shell/bottom-panel';
@@ -28,6 +29,7 @@ import { TitleBar } from './features/shell/title-bar';
     ContextMenu,
     CopyDialog,
     DeleteDialog,
+    HookDialog,
     ToastOutlet,
     TourOutlet,
   ],
@@ -55,6 +57,9 @@ import { TitleBar } from './features/shell/title-bar';
     }
     @if (ui.copy()) {
       <ad-copy-dialog />
+    }
+    @if (ui.hook()) {
+      <ad-hook-dialog />
     }
     @if (ui.palette()) {
       <ad-command-palette />

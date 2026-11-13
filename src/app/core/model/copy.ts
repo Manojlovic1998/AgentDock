@@ -1,5 +1,5 @@
 import { labelOf, plural } from './graph';
-import { Change, CopyItem, Model, Resource } from './types';
+import { COPYABLE, Change, CopyItem, Model, Resource } from './types';
 
 /**
  * A resource that will be copied, with what the dialog shows about it.
@@ -32,12 +32,14 @@ export interface CopyPlan {
  *
  * @param n - Resource from the open workspace.
  * @returns The reason as a sentence fragment that follows the resource name, or null when it can be copied.
+ * Agents, skills, commands, rules and MCP servers of the project can be copied; CLAUDE.md cannot.
  */
 export function copyBlocker(n: Resource): string | null {
-  if (n.type !== 'agent' && n.type !== 'skill') return 'only agents and skills can be copied';
+  if (COPYABLE.indexOf(n.type as CopyItem['kind']) < 0) return 'is specific to its project and cannot be copied';
   if (n.missing) return 'does not exist';
   if (n.raw === undefined) return 'has not been saved yet. Save it first';
   if (n.scope === 'user') return 'is in user scope, so every project already has it';
+  if (n.scope === 'managed') return 'is deployed by your organization and cannot be copied';
   if (n.scope !== 'project') return `belongs to ${n.scope ?? 'another'} scope and cannot be copied`;
   return null;
 }
@@ -47,7 +49,8 @@ export function copyBlocker(n: Resource): string | null {
  *
  * @remarks
  * Skills used by a selected agent are only added when they are project skills on disk; user and
- * plugin skills are available in the destination already, or are not ours to copy.
+ * plugin skills are available in the destination already, or are not ours to copy. MCP servers
+ * an agent uses are not added: they hold credentials and addresses the user should choose to share.
  *
  * @param ids - Ids of the resources the user chose. Unknown ids are ignored.
  * @param model - Current workspace model, used to look resources and relationships up.
@@ -64,7 +67,9 @@ export function copyPlan(ids: string[], model: Model, changes: Change[], withSki
   const add = (n: Resource, viaAgent: boolean): void => {
     if (seen.has(n.id)) return;
     seen.add(n.id);
-    items.push({ id: n.id, kind: n.type as CopyItem['kind'], file: n.file, label: labelOf(n), unsaved: changed.has(n.id), viaAgent });
+    // A server is one key of a shared file, so the item also says which one.
+    const name = n.type === 'mcp' ? { name: n.name } : {};
+    items.push({ id: n.id, kind: n.type as CopyItem['kind'], file: n.file, ...name, label: labelOf(n), unsaved: changed.has(n.id), viaAgent });
   };
 
   const chosen = ids.map((id) => model.by[id]).filter((n): n is Resource => !!n);

@@ -1,5 +1,7 @@
-import { buildModel, fileOps, findChanges, findProblems } from '../model/analysis';
-import { joinDoc, patchHead, splitDoc, toList } from '../model/frontmatter';
+import { buildModel, fileOps, findChanges, findProblems, isDerived, validName } from '../model/analysis';
+import { splitCommand } from '../model/mcp';
+import { makeCmd, makeMcp, makeMemory, makeRule } from './mock-data';
+import { joinDoc, normalizeHead, normalizeSource, patchHead, splitDoc, toList } from '../model/frontmatter';
 import { sourceOf } from '../model/source';
 import { ResourcePatch, WorkspaceSnapshot, WorkspaceState } from '../model/types';
 import { ago, buildSnapshot, hookScripts, scriptOf } from './build-snapshot';
@@ -85,6 +87,8 @@ const state = (snap: WorkspaceSnapshot, patch: Partial<WorkspaceState> = {}): Wo
   deleted: [],
   deletedSaved: [],
   presets: [],
+  docs: {},
+  baseDocs: {},
   ...patch,
 });
 
@@ -103,6 +107,16 @@ describe('frontmatter', () => {
     expect(patchHead(head, 'color', undefined)).toEqual(head.filter((l) => l !== 'color: purple'));
     expect(patchHead(head, 'model', 'opus')).toEqual([...head, 'model: opus']);
     expect(patchHead(head, 'description', 'a: b')[2]).toBe('description: "a: b"');
+  });
+
+  it('normalizes key order and indentation, keeping comments and unknown keys', () => {
+    const head = ['# who', 'tools: Read, Grep', 'color: purple', 'skills:', '    - a', '    - b', '# what it does', 'description: "Reviews: code"', 'name: reviewer'];
+    expect(normalizeHead(head)).toEqual(['name: reviewer', '# what it does', 'description: "Reviews: code"', '# who', 'tools: Read, Grep', 'skills:', '  - a', '  - b', 'color: purple']);
+    const broken = ['name: [unclosed'];
+    expect(normalizeHead(broken)).toBe(broken);
+    const text = '# No frontmatter\n\nText\n'.split('\n');
+    expect(normalizeSource(text)).toBe(text);
+    expect(normalizeSource('---\ndescription: d\nname: n\n---\n\nBody\n'.split('\n')).join('\n')).toBe('---\nname: n\ndescription: d\n---\n\nBody\n');
   });
 
   it('reads comma lists without splitting inside parentheses', () => {
@@ -153,7 +167,7 @@ describe('buildSnapshot', () => {
 
   it('fills the lists that have no graph node', () => {
     const t = snapshot().tables;
-    expect(t['claudemd'].rows).toEqual([['~/.claude/CLAUDE.md', 'Personal preferences across projects.', 'user', '1 line', 'ok', '1h ago']]);
+    expect(t['claudemd'].rows).toEqual([['~/.claude/CLAUDE.md', 'Personal preferences across projects.', 'user', '1 line', 'ok', '1h ago', '~/.claude/CLAUDE.md']]);
     expect(t['settingsres'].rows.map((r) => [r[0], r[3], r[4]])).toEqual([
       ['.claude/settings.local.json', 'invalid JSON', 'err'],
       ['.claude/settings.json', '2 keys', 'ok'],
@@ -163,6 +177,18 @@ describe('buildSnapshot', () => {
       ['echo', 'Stop', '', 'ok'],
     ]);
     expect(Object.keys(t)).toEqual(['claudemd', 'settingsres', 'hooks', 'styles', 'plugins', 'memory', 'other']);
+  });
+
+  it('puts managed settings and MCP servers above every other scope', () => {
+    const managed = [
+      file('settings', 'C:/Program Files/ClaudeCode/managed-settings.json', JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'audit --log' }] }] } }), 'managed'),
+      file('mcp', 'C:/Program Files/ClaudeCode/managed-mcp.json', JSON.stringify({ mcpServers: { github: { type: 'http', url: 'https://corp.example/gh' } } }), 'managed'),
+    ];
+    const s = buildSnapshot(scan(FILES.concat(managed)), NOW);
+    expect(s.tables['settingsres'].rows.map((r) => r[2])).toEqual(['managed', 'local', 'project']);
+    expect(s.tables['hooks'].rows.map((r) => r[0])).toContain('audit');
+    expect(s.nodes.find((n) => n.id === 'mcp:github')).toMatchObject({ scope: 'managed', url: 'https://corp.example/gh' });
+    expect(s.problems.map((p) => p.msg)).toContain('MCP server github exists in managed and project scope. The managed copy takes precedence.');
   });
 
   it('reports what only a scan can know, and the model rules still apply', () => {
@@ -241,11 +267,99 @@ describe('scanned sources', () => {
     expect(ops).toContainEqual({ op: 'write', file: '.claude/skills/unused/SKILL.md', text: '---\ndescription: Now described.\n---\nBody\n', mtime });
     expect(ops).toContainEqual({ op: 'trash', file: '.claude/skills/review-checklist' });
     expect(ops).toContainEqual({ op: 'trash', file: '.claude/commands/git/review.md' });
-    expect(ops).toContainEqual({ op: 'jsonRemove', file: '.mcp.json', path: ['mcpServers', 'pw'] });
+    expect(ops).toContainEqual({ op: 'jsonRemove', file: '.mcp.json', path: ['mcpServers', 'pw'], mtime });
     const created = ops.find((o) => o.op === 'write' && o.file === '.claude/agents/helper.md');
     expect(created).toMatchObject({ mtime: undefined });
     expect((created as { text: string }).text).toMatch(/^---\nname: helper\n[\s\S]*\n\nHi\n$/);
     // Detaching the deleted skill also rewrites the agent that listed it.
     expect(ops.filter((o) => o.op === 'write')).toHaveLength(3);
+  });
+});
+
+describe('editing commands, rules, CLAUDE.md and MCP servers', () => {
+  const COMMAND = '---\ndescription: Review the PR.\nargument-hint: [pr-number]\n---\n\nUse the reviewer subagent on $ARGUMENTS.\n';
+  const RULE = '---\npaths:\n  - "**/*.spec.ts"\n---\n\n# Testing\n\nName specs after the unit.\n';
+
+  const edited = (over: Record<string, ResourcePatch>, patch: Partial<WorkspaceState> = {}) => {
+    const s = snapshot();
+    const st = state(s, { over, ...patch });
+    const model = buildModel(s.nodes, st);
+    const changes = findChanges(s.nodes, [], st);
+    return { s, model, changes, ops: fileOps(changes, model.allBy) };
+  };
+
+  it('patches a command: description, argument hint and prompt', () => {
+    const { changes } = edited({ 'cmd:git:review': { desc: 'Review a pull request.', hint: '', body: 'Review $ARGUMENTS.' } });
+    expect(changes).toHaveLength(1);
+    expect(changes[0].text).toBe('---\ndescription: Review a pull request.\n---\n\nReview $ARGUMENTS.\n');
+    expect(edited({ 'cmd:git:review': { hint: '[pr] [depth]' } }).changes[0].text).toBe(COMMAND.replace('[pr-number]', '"[pr] [depth]"'));
+  });
+
+  it('patches a rule: paths and text, without adding a description key', () => {
+    const { changes } = edited({ 'rule:testing': { paths: 'src/**/*.ts, e2e/**', body: '# Testing\n\nOne assertion per test.', desc: 'One assertion per test.' } });
+    expect(changes[0].text).toBe('---\npaths:\n  - src/**/*.ts\n  - e2e/**\n---\n\n# Testing\n\nOne assertion per test.\n');
+    expect(edited({ 'rule:testing': { paths: '' } }).changes[0].text).toBe(RULE.replace('paths:\n  - "**/*.spec.ts"\n', ''));
+  });
+
+  it('writes CLAUDE.md as the edited text', () => {
+    const { ops } = edited({ 'mem:claude': { body: '# Shop\n\nAngular storefront, strict mode.\n' } });
+    expect(ops).toEqual([{ op: 'write', file: 'CLAUDE.md', text: '# Shop\n\nAngular storefront, strict mode.\n', mtime: NOW - HOUR }]);
+  });
+
+  it('follows the command text for command → agent relationships', () => {
+    expect(edited({}).model.rel).toContainEqual(['cmd:git:review', 'agent:reviewer']);
+    const { model } = edited({ 'cmd:git:review': { body: 'Review $ARGUMENTS yourself.' } });
+    expect(model.rel.some((r) => r[0] === 'cmd:git:review')).toBe(false);
+    expect(isDerived('cmd:git:review', model.by)).toBe(true);
+    expect(isDerived('agent:reviewer', model.by)).toBe(false);
+  });
+
+  it('rewrites only the edited keys of an MCP server', () => {
+    const { ops } = edited({ 'mcp:github': { url: 'https://mcp.example/github' }, 'mcp:pw': { transport: 'http', url: 'https://pw.example/mcp' } });
+    expect(ops).toEqual([
+      { op: 'jsonSet', file: '.mcp.json', path: ['mcpServers', 'github'], mtime: NOW - HOUR, value: { type: 'http', url: 'https://mcp.example/github', headers: { Authorization: 'Bearer ${GH_TOKEN}' } } },
+      { op: 'jsonSet', file: '.mcp.json', path: ['mcpServers', 'pw'], mtime: NOW - HOUR, value: { type: 'http', url: 'https://pw.example/mcp' } },
+    ]);
+    const local = edited({ 'mcp:github': { transport: 'stdio', url: 'npx -y "@acme/gh server" --stdio' } }).ops[0];
+    expect(local).toMatchObject({ value: { type: 'stdio', command: 'npx', args: ['-y', '@acme/gh server', '--stdio'], headers: { Authorization: 'Bearer ${GH_TOKEN}' } } });
+    expect(splitCommand('  node  ./a.js ')).toEqual(['node', './a.js']);
+  });
+
+  it('gives every new resource a file that follows its name', () => {
+    const added = [
+      { ...makeCmd('untitled-command'), name: 'git:ship', hint: '[branch]' },
+      { ...makeRule('untitled-rule'), name: 'api', paths: 'src/api/**' },
+      makeMcp('untitled-server'),
+      makeMemory('shop'),
+    ];
+    const s = buildSnapshot(scan(FILES.filter((f) => f.file !== 'CLAUDE.md')), NOW);
+    const st = state(s, { added });
+    const model = buildModel(s.nodes, st);
+    const ops = fileOps(findChanges(s.nodes, [], st), model.allBy);
+    expect(ops).toContainEqual({
+      op: 'write',
+      file: '.claude/commands/git/ship.md',
+      mtime: undefined,
+      text: '---\ndescription: Describe what this command does.\nargument-hint: "[branch]"\n---\n\nDescribe the task for Claude. $ARGUMENTS holds what was typed after the command.\n',
+    });
+    expect(ops).toContainEqual({
+      op: 'write',
+      file: '.claude/rules/api.md',
+      mtime: undefined,
+      text: '---\npaths:\n  - src/api/**\n---\n\n# untitled-rule\n\nDescribe the convention Claude should follow.\n',
+    });
+    expect(ops).toContainEqual({ op: 'jsonSet', file: '.mcp.json', path: ['mcpServers', 'untitled-server'], mtime: NOW - HOUR, value: { type: 'http', url: 'https://example.com/mcp' } });
+    expect(ops).toContainEqual({ op: 'write', file: 'CLAUDE.md', mtime: undefined, text: '# shop\n\nDescribe the project, its commands and its conventions.\n' });
+    // The new CLAUDE.md is linked to the project rules, old and new.
+    expect(model.rel).toContainEqual(['mem:claude', 'rule:testing']);
+    expect(model.rel).toContainEqual(['mem:claude', 'untitled-rule']);
+  });
+
+  it('accepts only names that work as a file name or a JSON key', () => {
+    expect(validName({ ...makeCmd('x'), name: 'git:commit' })).toBe(true);
+    expect(validName({ ...makeCmd('x'), name: 'git:' })).toBe(false);
+    expect(validName({ ...makeRule('x'), name: 'a/b' })).toBe(false);
+    expect(validName({ ...makeMcp('x'), name: 'my server' })).toBe(false);
+    expect(validName({ ...makeMcp('x'), name: 'github' })).toBe(true);
   });
 });
