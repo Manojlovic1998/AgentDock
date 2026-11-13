@@ -12,13 +12,18 @@
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "npm run electron:compile && concurrently -k -n ng,electron \"ng serve --port 4200\" \"wait-on http://localhost:4200 && cross-env-shell AGENTDOCK_DEV_URL=http://localhost:4200 electron .\"",
     "electron:start": "npm run build && npm run electron:compile && electron .",
-    "electron:build": "npm run build && npm run electron:compile && electron-builder"
+    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "electron:build:win": "npm run build && npm run electron:compile && electron-builder --win",
+    "electron:build:mac": "npm run build && npm run electron:compile && electron-builder --mac",
+    "electron:build:linux": "npm run build && npm run electron:compile && electron-builder --linux",
+    "icon": "node scripts/make-icon.mjs"
   },
   "build": {
     "appId": "dev.agentdock.app",
     "productName": "AgentDock",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/agent-dock/browser/**/*",
@@ -27,7 +32,18 @@
       "!node_modules"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Development",
+      "icon": "build/icon.png"
     }
   },
   "private": true,
