@@ -1,0 +1,61 @@
+name: Release
+
+# Push a tag such as v0.1.0-beta.1 to build the installers and publish them
+# as a GitHub release. A tag with a hyphen (beta, rc) is marked as a pre-release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  installers:
+    name: Installer (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest, script: 'electron:build:linux', files: 'release/*.AppImage' }
+          - { name: macOS, os: macos-latest, script: 'electron:build:mac', files: 'release/*.dmg' }
+          - { name: Windows, os: windows-latest, script: 'electron:build:win', files: 'release/*.exe' }
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the tag matches package.json
+        shell: bash
+        run: |
+          [ "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json version"; exit 1; }
+      - run: npm test
+      - run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AgentDock-${{ matrix.name }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: installers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-installers
+          merge-multiple: true
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist-installers/* \
+            --repo "$GITHUB_REPOSITORY" --title "AgentDock $GITHUB_REF_NAME" \
+            --generate-notes $flags
