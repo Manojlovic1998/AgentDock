@@ -38,6 +38,7 @@ interface ScanOptions {
 type FileOp =
   | { op: 'write'; file: string; text: string; mtime?: number }
   | { op: 'trash'; file: string }
+  | { op: 'move'; file: string; to: string; mtime: number }
   | { op: 'jsonRemove'; file: string; path: string[]; mtime?: number }
   | { op: 'jsonSet'; file: string; path: string[]; value: unknown; mtime?: number };
 
@@ -392,12 +393,40 @@ async function prepareJson(root: string, file: string, ops: JsonOp[]): Promise<(
   };
 }
 
+/**
+ * Removes folders a move left empty, walking up until a non-empty folder or the `commands` / `rules`
+ * folder itself, which is never removed.
+ */
+async function pruneEmptyDirs(dir: string): Promise<void> {
+  for (let cur = dir; ; cur = path.dirname(cur)) {
+    const isRoot = ['commands', 'rules'].includes(path.basename(cur)) && ['.claude'].includes(path.basename(path.dirname(cur)));
+    if (isRoot || path.dirname(cur) === cur) return;
+    try {
+      await fs.rmdir(cur);
+    } catch {
+      return;
+    }
+  }
+}
+
 /** Checks one file operation without changing anything, and returns the work to do if it passes. */
 async function prepare(root: string, op: Exclude<FileOp, JsonOp>): Promise<() => Promise<void>> {
   const abs = target(root, op.file);
   const st = await stat(abs);
 
   if (op.op === 'trash') return async () => void (st && (await shell.trashItem(abs)));
+
+  if (op.op === 'move') {
+    const dest = target(root, op.to);
+    if (!st) throw new Error('was removed on disk since the last scan');
+    if (Math.abs(st.mtimeMs - op.mtime) > 1) throw new Error('changed on disk since the last scan');
+    if (await stat(dest)) throw new Error(`cannot be renamed: ${op.to} already exists`);
+    return async () => {
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.rename(abs, dest);
+      await pruneEmptyDirs(path.dirname(abs));
+    };
+  }
 
   // A scanned file must be unchanged since the scan; a new file must not overwrite an existing one.
   if (op.mtime === undefined) {

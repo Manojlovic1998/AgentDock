@@ -9,6 +9,7 @@ import { ContextMenu } from './features/overlays/context-menu';
 import { CopyDialog } from './features/overlays/copy-dialog';
 import { DeleteDialog } from './features/overlays/delete-dialog';
 import { HookDialog } from './features/overlays/hook-dialog';
+import { RenameDialog } from './features/overlays/rename-dialog';
 import { ToastOutlet } from './features/overlays/toast';
 import { TourOutlet } from './features/overlays/tour-outlet';
 import { BottomPanel } from './features/shell/bottom-panel';
@@ -29,6 +30,7 @@ import { TitleBar } from './features/shell/title-bar';
     ContextMenu,
     CopyDialog,
     DeleteDialog,
+    RenameDialog,
     HookDialog,
     ToastOutlet,
     TourOutlet,
@@ -54,6 +56,9 @@ import { TitleBar } from './features/shell/title-bar';
     }
     @if (ui.dialog()) {
       <ad-delete-dialog />
+    }
+    @if (ui.rename()) {
+      <ad-rename-dialog />
     }
     @if (ui.copy()) {
       <ad-copy-dialog />

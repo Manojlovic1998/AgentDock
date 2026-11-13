@@ -32,6 +32,8 @@ export class UiStore {
   readonly palette = signal(false);
   readonly ctx = signal<{ id: string; x: number; y: number } | null>(null);
   readonly dialog = signal<string | null>(null);
+  /** Id of the resource the rename dialog is open for, or null when it is closed. */
+  readonly rename = signal<string | null>(null);
   /** Ids of the resources the "copy to another project" dialog is open for, or null when it is closed. */
   readonly copy = signal<string[] | null>(null);
   /** File without a graph node that the Source view shows, by display path; null shows the selected resource. */
@@ -82,6 +84,7 @@ export class UiStore {
     this.ctx.set(null);
     this.palette.set(false);
     this.dialog.set(null);
+    this.rename.set(null);
     this.copy.set(null);
     this.hook.set(null);
   }
