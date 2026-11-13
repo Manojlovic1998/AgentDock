@@ -184,4 +184,4 @@ watched, because Claude Code rewrites it constantly; use **Rescan workspace** fo
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE) for the terms and [NOTICE](NOTICE) for the copyright notice.
