@@ -1,6 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
+import { copyPlan } from '../model/copy';
 import { plural } from '../model/graph';
+import { renameBlocker } from '../model/rename';
 import { Kind, Problem } from '../model/types';
 import { PrefsStore } from './prefs.store';
 import { InspectorTab, UiStore } from './ui.store';
@@ -53,9 +55,22 @@ export class Commands {
   focusNode(id: string, tab: InspectorTab = 'ov'): void {
     this.ui.view.set('graph');
     this.ui.sel.set([id]);
+    this.ui.doc.set(null);
     this.ui.inspOpen.set(true);
     this.ui.tab.set(tab);
     this.ui.q.set('');
+    this.go('workspace');
+  }
+
+  /**
+   * Opens a file that has no graph node (a settings file, output style or memory file) in the
+   * Source view.
+   *
+   * @param file - Display path of the file.
+   */
+  openDoc(file: string): void {
+    this.ui.doc.set(file);
+    this.ui.view.set('source');
     this.go('workspace');
   }
 
@@ -64,15 +79,47 @@ export class Commands {
     else this.go(p.screen ?? 'validation');
   }
 
-  addNode(type: 'agent' | 'skill'): void {
+  /** Creates a resource of the given kind and opens it for editing. */
+  addNode(type: Kind): void {
     const id = this.ws.addNode(type);
-    this.focusNode(id, 'cf');
+    if (id) this.focusNode(id, 'cf');
   }
 
   askDelete(id: string): void {
     this.ui.ctx.set(null);
     if (this.ws.confirmDelete) this.ui.dialog.set(id);
     else this.ws.remove(id);
+  }
+
+  /** Opens the rename dialog for a command, rule or MCP server, or says why it cannot be renamed. */
+  askRename(id: string): void {
+    this.ui.ctx.set(null);
+    const n = this.ws.model().by[id];
+    if (!n) return;
+    const why = renameBlocker(n);
+    if (why) return this.ui.note(why);
+    this.ui.rename.set(id);
+  }
+
+  /**
+   * Opens the "copy to another project" dialog.
+   *
+   * @remarks
+   * When the resource is part of a multi-selection, the whole selection is offered. A note is
+   * shown instead of the dialog when there is nothing that can be copied.
+   *
+   * @param id - Resource the action was invoked on.
+   */
+  askCopy(id: string): void {
+    this.ui.ctx.set(null);
+    if (!this.ws.canCopy) return this.ui.note('Copying needs a project folder: the sample workspace has no files');
+    const ids = this.ui.isSelected(id) ? this.ui.sel() : [id];
+    const plan = copyPlan(ids, this.ws.model(), [], false);
+    if (!plan.items.length) {
+      const first = plan.blocked[0];
+      return this.ui.note(first ? `${first.label} ${first.reason}` : 'Nothing to copy');
+    }
+    this.ui.copy.set(ids);
   }
 
   runValidation(): void {
@@ -100,7 +147,15 @@ export class Commands {
   }
 
   saveAll(): void {
-    this.ws.saveAll();
+    void this.ws.saveAll();
+  }
+
+  rescan(): void {
+    void this.ws.rescan();
+  }
+
+  openFolder(): void {
+    void this.ws.openFolder();
   }
 
   openPalette(): void {

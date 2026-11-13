@@ -15,6 +15,8 @@ const state = (patch: Partial<WorkspaceState> = {}): WorkspaceState => ({
   deleted: [],
   deletedSaved: [],
   presets: [],
+  docs: {},
+  baseDocs: {},
   ...patch,
 });
 
@@ -106,7 +108,7 @@ describe('diff', () => {
 
 describe('analysis', () => {
   it('finds two errors and two warnings in the sample workspace', () => {
-    const problems = findProblems(model());
+    const problems = findProblems(model(), ACME_SNAPSHOT.problems);
     expect(problems.filter((p) => p.sev === 'err')).toHaveLength(2);
     expect(problems.filter((p) => p.sev === 'warn')).toHaveLength(2);
     const status = statusMap(problems);
@@ -117,7 +119,7 @@ describe('analysis', () => {
   });
 
   it('drops problems for deleted resources', () => {
-    const problems = findProblems(model({ deleted: ['mcp:jira', 'release-scribe'] }));
+    const problems = findProblems(model({ deleted: ['mcp:jira', 'release-scribe'] }), ACME_SNAPSHOT.problems);
     expect(problems.filter((p) => p.sev === 'err')).toHaveLength(1);
     expect(problems.filter((p) => p.sev === 'warn')).toHaveLength(1);
   });

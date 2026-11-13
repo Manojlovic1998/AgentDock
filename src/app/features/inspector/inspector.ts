@@ -1,7 +1,10 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { KIND_LABEL, STATUS_LABEL, labelOf } from '../../core/model/graph';
+import { validName } from '../../core/model/analysis';
+import { firstText } from '../../core/model/frontmatter';
+import { KIND_LABEL, STATUS_LABEL, labelOf, plural } from '../../core/model/graph';
+import { MCP_TRANSPORTS } from '../../core/model/mcp';
 import { SEVERITY_ICON, iconFor } from '../../core/model/icons';
 import { highlight, sourceOf } from '../../core/model/source';
 import { Kind, Resource, ResourcePatch } from '../../core/model/types';
@@ -47,6 +50,7 @@ const WIDTH_MAX = 520;
     class: 'insp relative flex min-h-0 max-w-[92vw] flex-none flex-col border-l border-line bg-bg1',
     role: 'complementary',
     'aria-label': 'Inspector',
+    'data-tour': 'inspector',
     '[style.width.px]': 'ui.inspW()',
   },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,6 +62,7 @@ export class Inspector {
 
   protected readonly sevIcon = SEVERITY_ICON;
   protected readonly models = MODELS;
+  protected readonly transports: SegOption[] = MCP_TRANSPORTS.map((t) => ({ value: t, label: t }));
   private resizeFrom = 0;
 
   protected readonly one = this.ws.selectedOne;
@@ -90,8 +95,34 @@ export class Inspector {
       ];
     return [
       { id: 'ov', label: 'Overview' },
+      { id: 'cf', label: n.type === 'mem' ? 'Content' : 'Configuration' },
       { id: 'src', label: 'Source' },
     ];
+  });
+
+  /**
+   * Whether the name can no longer be changed here. The name of a command or rule is its file
+   * path and that of an MCP server its key in the file, so it is fixed once the resource is saved.
+   */
+  protected readonly nameLocked = computed(() => {
+    const n = this.one();
+    return !!n && n.raw !== undefined && n.type !== 'agent' && n.type !== 'skill';
+  });
+
+  protected readonly nameHint = computed(() => {
+    const n = this.one();
+    if (!n || n.type === 'agent' || n.type === 'skill') return '';
+    if (this.nameLocked()) {
+      if (n.type === 'mem') return '';
+      return n.type === 'mcp' ? 'The name is the key in the file. Use Rename to change it.' : 'The name is the file path. Use Rename to change it.';
+    }
+    if (!validName(n)) return n.type === 'mcp' ? 'Use a name without spaces.' : 'This name cannot be used as a file name.';
+    return n.type === 'mcp' ? '' : 'Use a colon for a subfolder: git:commit is saved as git/commit.md.';
+  });
+
+  protected readonly bodyTitle = computed(() => {
+    const type = this.one()?.type;
+    return type === 'cmd' ? 'Prompt' : type === 'rule' ? 'Rule text' : type === 'mem' ? 'CLAUDE.md' : 'Instructions';
   });
 
   protected readonly tab = computed<InspectorTab>(() => (this.tabs().some((t) => t.id === this.ui.tab()) ? this.ui.tab() : 'ov'));
@@ -208,8 +239,8 @@ export class Inspector {
         ];
       default:
         return [
-          ['Scope', 'project'],
-          ['Length', '412 lines'],
+          ['Scope', n.scope ?? 'project'],
+          ['Length', plural(n.lines ?? 0, 'line')],
           ['File', n.file],
           ['Modified', n.mod],
         ];
@@ -227,6 +258,16 @@ export class Inspector {
     if (n) this.ws.edit(n.id, patch);
   }
 
+  /** Edits the text below the frontmatter, keeping what is derived from it in step. */
+  protected editBody(body: string): void {
+    const n = this.one();
+    if (!n) return;
+    // What a rule shows as its description is the first line of its text.
+    if (n.type === 'rule') this.edit({ body, desc: firstText(body) });
+    else if (n.type === 'mem') this.edit({ body, lines: body ? body.replace(/\n$/, '').split('\n').length : 0 });
+    else this.edit({ body });
+  }
+
   protected text(e: Event): string {
     return (e.target as HTMLInputElement | HTMLTextAreaElement).value;
   }
@@ -235,7 +276,9 @@ export class Inspector {
   protected toggleTool(tool: string): void {
     const cur = this.one()?.tools ?? [];
     const on = cur.indexOf(tool) >= 0;
-    this.edit({ tools: on ? cur.filter((t) => t !== tool) : TOOLS.filter((t) => t === tool || cur.indexOf(t) >= 0) });
+    // Entries outside the canonical list (mcp__server__tool, Bash(git:*)) are kept after the known ones.
+    const custom = cur.filter((t) => TOOLS.indexOf(t) < 0);
+    this.edit({ tools: on ? cur.filter((t) => t !== tool) : TOOLS.filter((t) => t === tool || cur.indexOf(t) >= 0).concat(custom) });
   }
 
   protected detach(skillId: string): void {

@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { HookAt } from '../model/hooks';
 import { ActivityEntry } from '../model/types';
 
 export interface Toast {
@@ -31,6 +32,14 @@ export class UiStore {
   readonly palette = signal(false);
   readonly ctx = signal<{ id: string; x: number; y: number } | null>(null);
   readonly dialog = signal<string | null>(null);
+  /** Id of the resource the rename dialog is open for, or null when it is closed. */
+  readonly rename = signal<string | null>(null);
+  /** Ids of the resources the "copy to another project" dialog is open for, or null when it is closed. */
+  readonly copy = signal<string[] | null>(null);
+  /** File without a graph node that the Source view shows, by display path; null shows the selected resource. */
+  readonly doc = signal<string | null>(null);
+  /** The hook dialog: the hook being edited, or `at: null` for a new one. Null when it is closed. */
+  readonly hook = signal<{ file: string; at: HookAt | null } | null>(null);
   readonly toast = signal<Toast | null>(null);
   /** Selected file on the Changes screen. */
   readonly chSel = signal<string | null>(null);
@@ -49,6 +58,7 @@ export class UiStore {
     const same = cur.length === 1 && cur[0] === id;
     if (shift) this.sel.set(cur.indexOf(id) >= 0 ? cur.filter((x) => x !== id) : cur.concat([id]));
     else this.sel.set([id]);
+    this.doc.set(null);
     this.inspOpen.set(true);
     this.ctx.set(null);
     if (!same) this.tab.set('ov');
@@ -74,5 +84,8 @@ export class UiStore {
     this.ctx.set(null);
     this.palette.set(false);
     this.dialog.set(null);
+    this.rename.set(null);
+    this.copy.set(null);
+    this.hook.set(null);
   }
 }

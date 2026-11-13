@@ -52,3 +52,6 @@ __screenshots__/
 Thumbs.db
 release/
 dist-electron/
+
+# Design exports (kept local only)
+/design/

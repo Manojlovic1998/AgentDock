@@ -36,7 +36,7 @@ const GROUPS: [Severity, string][] = [
               <span class="font-mono text-tx3">{{ g.items.length }}</span>
             </div>
             @for (p of g.items; track $index) {
-              <div class="flex flex-wrap items-center gap-3 border-b border-line px-3 py-[9px]">
+              <div class="flex flex-wrap items-center gap-3 border-b border-line px-3 py-[9px]" data-tour="problem-row">
                 <div class="min-w-[260px] flex-1">
                   <div class="leading-[1.45]">{{ p.msg }}</div>
                   <div class="mt-1 flex items-center gap-2">

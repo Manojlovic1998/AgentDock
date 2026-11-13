@@ -31,6 +31,39 @@ export function makeSkill(id: string, desc: string, scope: string, mod: string, 
   };
 }
 
+/** A new slash command with text of its own, as created in the app. */
+export function makeCmd(id: string): Resource {
+  return {
+    id,
+    type: 'cmd',
+    name: id,
+    desc: 'Describe what this command does.',
+    hint: '',
+    scope: 'project',
+    mod: 'just now',
+    body: 'Describe the task for Claude. $ARGUMENTS holds what was typed after the command.',
+    file: '.claude/commands/' + id + '.md',
+  };
+}
+
+/** A new project rule with text of its own, as created in the app. */
+export function makeRule(id: string): Resource {
+  const body = '# ' + id + '\n\nDescribe the convention Claude should follow.';
+  return { id, type: 'rule', name: id, desc: 'Describe the convention Claude should follow.', paths: '', scope: 'project', mod: 'just now', body, file: '.claude/rules/' + id + '.md' };
+}
+
+/** A new MCP server entry for the project's `.mcp.json`, as created in the app. */
+export function makeMcp(id: string): Resource {
+  const url = 'https://example.com/mcp';
+  return { id, type: 'mcp', name: id, desc: url, transport: 'http', url, scope: 'project', mod: 'just now', file: '.mcp.json' };
+}
+
+/** The project's CLAUDE.md, for a project that has none yet. */
+export function makeMemory(project: string): Resource {
+  const body = '# ' + (project || 'Project') + '\n\nDescribe the project, its commands and its conventions.';
+  return { id: 'mem:claude', type: 'mem', name: 'CLAUDE.md', desc: 'Project memory loaded into every session.', scope: 'project', mod: 'just now', body, lines: 3, file: 'CLAUDE.md' };
+}
+
 const cmd = (name: string, desc: string, hint: string, mod: string): Resource => ({
   id: 'cmd:' + name,
   type: 'cmd',
@@ -138,6 +171,7 @@ export const ACME_SNAPSHOT: WorkspaceSnapshot = {
       desc: 'Project memory loaded into every session: stack, commands and imported rules.',
       mod: '1h ago',
       file: 'CLAUDE.md',
+      lines: 412,
     },
     rule('angular-style', 'src/app/**/*.ts', 'Component, template and naming conventions for Angular code.', '4d ago'),
     rule('testing', '**/*.spec.ts', 'Structure and naming for Jest and Playwright specs.', '1w ago'),
@@ -168,6 +202,7 @@ export const ACME_SNAPSHOT: WorkspaceSnapshot = {
     'mem:claude>rule:testing',
     'mem:claude>rule:commit-conventions',
   ],
+  docs: [],
   presets: [
     {
       id: 'p:settings',
@@ -266,4 +301,42 @@ export const ACME_SNAPSHOT: WorkspaceSnapshot = {
     { t: '2h ago', msg: 'Created command /analyze-ticket' },
     { t: '1w ago', msg: 'Skill kendo-components discovered from plugin kendo-toolkit' },
   ],
+  problems: [
+    {
+      sev: 'err',
+      msg: 'Hook lint-staged runs scripts/lint-staged.sh, but that file does not exist.',
+      res: 'lint-staged',
+      file: '.claude/settings.json:14',
+      screen: 'hooks',
+    },
+    {
+      sev: 'warn',
+      msg: 'MCP server jira expands ${JIRA_API_TOKEN}, which is not set in this environment.',
+      res: 'jira',
+      file: '.mcp.json:6',
+      target: 'mcp:jira',
+    },
+    {
+      sev: 'warn',
+      msg: 'Skill legacy-migration has a 1,180 character description. Descriptions are limited to 1,024 characters.',
+      res: 'legacy-migration',
+      file: '.claude/skills/legacy-migration/SKILL.md:3',
+      target: 'legacy-migration',
+    },
+    {
+      sev: 'info',
+      msg: 'CLAUDE.md is 412 lines. Path-specific guidance loads faster from .claude/rules/.',
+      res: 'CLAUDE.md',
+      file: 'CLAUDE.md',
+      target: 'mem:claude',
+    },
+    {
+      sev: 'info',
+      msg: 'Skill typescript-best-practices exists in user and project scope. The project copy takes precedence.',
+      res: 'typescript-best-practices',
+      file: '~/.claude/skills/typescript-best-practices/SKILL.md',
+      target: 'typescript-best-practices',
+    },
+  ],
+  scanned: '2 minutes ago',
 };

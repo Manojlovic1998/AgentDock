@@ -4,6 +4,7 @@ import { KIND_LABEL, labelOf, plural } from '../../core/model/graph';
 import { IconName, iconFor } from '../../core/model/icons';
 import { KindOrNone } from '../../core/model/types';
 import { Commands } from '../../core/state/commands';
+import { TourStore } from '../../core/state/tour.store';
 import { UiStore } from '../../core/state/ui.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
 import { ListNav } from '../../headless/list-nav';
@@ -87,6 +88,7 @@ export class CommandPalette {
   private readonly ui = inject(UiStore);
   private readonly ws = inject(WorkspaceStore);
   private readonly cmd = inject(Commands);
+  private readonly tour = inject(TourStore);
 
   protected readonly query = signal('');
   protected readonly active = signal(0);
@@ -101,9 +103,25 @@ export class CommandPalette {
       ['Auto-layout graph', 'layout', () => this.cmd.autoLayout()],
       ['Run validation', 'shield', () => this.cmd.runValidation()],
       ['Save all changes', 'save', () => this.cmd.saveAll()],
+      ['Rescan workspace', 'folder', () => this.cmd.rescan()],
+      ['Open folder…', 'folder', () => this.cmd.openFolder()],
       ['Open settings', 'gear', () => this.cmd.go('settings')],
+      ['New agent', 'plus', () => this.cmd.addNode('agent')],
+      ['New skill', 'plus', () => this.cmd.addNode('skill')],
+      ['New command', 'plus', () => this.cmd.addNode('cmd')],
+      ['New rule', 'plus', () => this.cmd.addNode('rule')],
+      ['New MCP server', 'plus', () => this.cmd.addNode('mcp')],
+      ['New CLAUDE.md', 'plus', () => this.cmd.addNode('mem')],
     ] as [string, IconName, () => void][]
-  ).map(([label, icon, run]) => ({ type: 'x', icon, label, hint: 'Command', mono: false, run }));
+  )
+    .concat(
+      this.tour.list.map<[string, IconName, () => void]>((t) => [
+        t.kind === 'tour' ? 'Start ' + t.title.toLowerCase() : 'Walkthrough: ' + t.title,
+        'help',
+        () => void this.tour.start(t.id),
+      ]),
+    )
+    .map(([label, icon, run]) => ({ type: 'x', icon, label, hint: 'Command', mono: false, run }));
 
   protected readonly items = computed<PaletteItem[]>(() => {
     const q = this.query().trim().toLowerCase();

@@ -14,15 +14,23 @@ export interface Prefs {
   fontSize: string;
   wrap: boolean;
   lineNo: boolean;
-  fmt: boolean;
+  /** Rewrite frontmatter in canonical form when a file is saved. */
+  normalize: boolean;
   autosave: boolean;
   confirm: boolean;
+  /** Project folder to scan; empty shows the sample workspace. */
   root: string;
+  /** Previously opened project folders, newest first. */
+  recent: string[];
   scanUser: boolean;
   scanPlugins: boolean;
   managed: boolean;
   watch: boolean;
   ignore: string;
+  /** The first-run invitation to take the product tour has been shown. */
+  tourOffered: boolean;
+  /** Ids of the tours and walkthroughs finished so far. */
+  toursDone: string[];
 }
 
 export type BoolPref = { [K in keyof Prefs]: Prefs[K] extends boolean ? K : never }[keyof Prefs];
@@ -38,15 +46,18 @@ const DEFAULTS: Prefs = {
   fontSize: '12',
   wrap: false,
   lineNo: true,
-  fmt: true,
+  normalize: false,
   autosave: false,
   confirm: true,
-  root: '~/code/acme-platform',
+  root: '',
+  recent: [],
   scanUser: true,
   scanPlugins: true,
   managed: false,
   watch: true,
   ignore: 'node_modules, dist, .nx',
+  tourOffered: false,
+  toursDone: [],
 };
 
 const KEY = 'agentdock.prefs.v1';
@@ -57,9 +68,14 @@ interface Stored {
   prefs: Prefs;
 }
 
+/** Default project root of earlier builds, which only named the sample workspace. */
+const SAMPLE_ROOT = '~/code/acme-platform';
+
 function read(): Partial<Stored> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Stored>;
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Stored>;
+    if (stored.prefs?.root === SAMPLE_ROOT) stored.prefs.root = '';
+    return stored;
   } catch {
     return {};
   }

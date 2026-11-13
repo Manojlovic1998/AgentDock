@@ -1,13 +1,21 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Commands } from '../../core/state/commands';
 import { PrefsStore } from '../../core/state/prefs.store';
-import { UiStore } from '../../core/state/ui.store';
+import { TourStore } from '../../core/state/tour.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
 import { WindowControls } from '../../core/window-controls';
 import { MenuDismiss } from '../../headless/menu-dismiss';
 import { Tip } from '../../headless/tip';
 import { Icon } from '../../ui/icon';
+
+const segments = (path: string): string[] => path.split(/[\\/]/).filter(Boolean);
+
+/** Last two folders of a path, so long absolute paths fit the workspace menu. */
+function shortPath(path: string): string {
+  const parts = segments(path);
+  return parts.length > 3 ? '…/' + parts.slice(-2).join('/') : path;
+}
 
 @Component({
   selector: 'ad-title-bar',
@@ -22,7 +30,7 @@ import { Icon } from '../../ui/icon';
     <span class="vsep max-wide:hidden"></span>
 
     <div class="relative">
-      <button class="bt gh" ngMenuTrigger [menu]="wsMenu" aria-label="Switch workspace">
+      <button class="bt gh" ngMenuTrigger [menu]="wsMenu" aria-label="Switch workspace" data-tour="ws-switcher">
         <svg adIcon="folder"></svg>
         <span class="text-tx">{{ ws.snapshot.name }}</span>
         <span class="chip">{{ ws.snapshot.branch }}</span>
@@ -30,7 +38,7 @@ import { Icon } from '../../ui/icon';
       </button>
       <div ngMenu adMenuDismiss #wsMenu="ngMenu" class="menu top-[30px] left-0 w-[280px]" (itemSelected)="$event?.()">
         <div class="lb px-2 pt-1.5 pb-1">Workspaces</div>
-        @for (w of workspaces; track w.path) {
+        @for (w of workspaces(); track $index) {
           <div ngMenuItem class="mi" [value]="w.pick">
             <svg [adIcon]="w.current ? 'check' : 'folder'"></svg>
             <span class="el min-w-0 flex-1">{{ w.name }}</span>
@@ -46,6 +54,7 @@ import { Icon } from '../../ui/icon';
       <button
         class="flex h-[26px] w-[380px] max-w-full items-center gap-2 rounded-md border border-line2 bg-bg2 px-2 text-tx3 max-wide:hidden"
         aria-label="Search resources and commands"
+        data-tour="search"
         (click)="cmd.openPalette()"
       >
         <svg adIcon="search"></svg>
@@ -62,6 +71,30 @@ import { Icon } from '../../ui/icon';
     <button class="ib" adTip="Command palette" aria-label="Command palette" (click)="cmd.openPalette()">
       <svg adIcon="cmdk"></svg>
     </button>
+    <div class="relative">
+      <button class="ib" ngMenuTrigger [menu]="helpMenu" aria-label="Help" data-tour="help" (click)="tour.dismissOffer()">
+        <svg adIcon="help"></svg>
+      </button>
+      <div ngMenu adMenuDismiss #helpMenu="ngMenu" class="menu top-[30px] right-0 w-[300px]" (itemSelected)="$event?.()">
+        <div class="lb px-2 pt-1.5 pb-1">Help</div>
+        @for (t of help().tours; track t.id) {
+          <div ngMenuItem class="mi" [value]="t.start">
+            <svg [adIcon]="t.done ? 'check' : 'help'"></svg>
+            <span class="el min-w-0 flex-1">Start {{ t.label }}</span>
+            <span class="t3 text-[10.5px]">{{ t.hint }}</span>
+          </div>
+        }
+        <div class="msep"></div>
+        <div class="lb px-2 pt-1.5 pb-1">Walkthroughs</div>
+        @for (t of help().walkthroughs; track t.id) {
+          <div ngMenuItem class="mi" [class.opacity-60]="t.blocked" [value]="t.start">
+            <svg [adIcon]="t.done ? 'check' : 'chevR'"></svg>
+            <span class="el min-w-0 flex-1">{{ t.label }}</span>
+            <span class="t3 text-[10.5px]">{{ t.hint }}</span>
+          </div>
+        }
+      </div>
+    </div>
     <button
       class="ib"
       [adTip]="prefs.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
@@ -98,19 +131,37 @@ export class TitleBar {
   protected readonly ws = inject(WorkspaceStore);
   protected readonly prefs = inject(PrefsStore);
   protected readonly win = inject(WindowControls);
-  private readonly ui = inject(UiStore);
+  protected readonly tour = inject(TourStore);
 
-  protected readonly workspaces = [
-    { name: this.ws.snapshot.name, path: this.ws.snapshot.path, current: true, pick: () => {} },
-    { name: 'acme-mobile', path: '~/code/acme-mobile', current: false, pick: () => this.unavailable() },
-    { name: 'User scope', path: '~/.claude', current: false, pick: () => this.unavailable() },
-  ];
+  /** The open workspace followed by recently opened folders. */
+  protected readonly workspaces = computed(() => {
+    const p = this.prefs.prefs();
+    const current = { name: this.ws.snapshot.name, path: shortPath(this.ws.snapshot.path), current: true, pick: () => {} };
+    const recent = p.recent
+      .filter((path) => path !== p.root)
+      .map((path) => ({ name: segments(path).pop() ?? path, path: shortPath(path), current: false, pick: () => void this.ws.openFolder(path) }));
+    return [current, ...recent];
+  });
 
-  protected readonly openFolder = () => this.ui.note('Opening folders is not available yet: this build runs on sample data');
+  protected readonly openFolder = () => this.cmd.openFolder();
 
-  private unavailable(): void {
-    this.ui.note(`Only ${this.ws.snapshot.name} is populated in this build`);
-  }
+  /** Help menu entries: the product tour, then the walkthroughs with their state. */
+  protected readonly help = computed(() => {
+    const items = this.tour.list.map((def) => {
+      const done = this.tour.isDone(def.id);
+      const blocked = !!this.tour.blocked(def);
+      return {
+        id: def.id,
+        kind: def.kind,
+        label: def.kind === 'tour' ? def.title.toLowerCase() : def.title,
+        done,
+        blocked,
+        hint: blocked ? 'Not available' : done ? 'Done' : `${def.steps.length} steps`,
+        start: () => void this.tour.start(def.id),
+      };
+    });
+    return { tours: items.filter((t) => t.kind === 'tour'), walkthroughs: items.filter((t) => t.kind === 'walkthrough') };
+  });
 
   protected onDoubleClick(e: MouseEvent): void {
     if (e.target === e.currentTarget) this.win.toggleMaximize();

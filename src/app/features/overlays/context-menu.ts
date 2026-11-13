@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, viewChild } from '@angular/core';
 import { IconName } from '../../core/model/icons';
+import { RENAMABLE } from '../../core/model/rename';
 import { Commands, KIND_SCREEN } from '../../core/state/commands';
 import { UiStore } from '../../core/state/ui.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
@@ -65,6 +66,14 @@ export class ContextMenu {
       { label: 'Detach all relationships', icon: 'unlink', run: () => this.ws.detachAll(n.id) },
       { label: 'Delete', icon: 'trash', danger: true, sep: true, run: () => this.cmd.askDelete(n.id) },
     ];
+    // CLAUDE.md is the only kind that cannot go to another project; the entry sits with the other file actions.
+    if (n.type !== 'mem') {
+      items.splice(5, 0, { label: 'Copy to another project…', icon: 'folder', run: () => this.cmd.askCopy(n.id) });
+    }
+    // Agents and skills are renamed by their name field; commands, rules and servers need a file move or re-key.
+    if (RENAMABLE.includes(n.type)) {
+      items.splice(4, 0, { label: 'Rename…', icon: 'pencil', run: () => this.cmd.askRename(n.id) });
+    }
     return { x: ctx.x, y: ctx.y, title: n.file, items };
   });
 

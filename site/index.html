@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentDock: visual editor for Claude Code configuration</title>
+<meta name="description" content="AgentDock is a free, open-source desktop app that shows your agents, skills, commands, rules and MCP servers as a graph, and lets you edit them with a diff before anything is saved. Independent project, not affiliated with Anthropic.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0D0E10">
+<link rel="canonical" href="https://manojlovic1998.github.io/AgentDock/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AgentDock: visual editor for Claude Code configuration">
+<meta property="og:description" content="AgentDock is a free, open-source desktop app that shows your agents, skills, commands, rules and MCP servers as a graph, and lets you edit them with a diff before anything is saved. Independent project, not affiliated with Anthropic.">
+<meta property="og:url" content="https://manojlovic1998.github.io/AgentDock/">
+<meta name="twitter:card" content="summary">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#about">Skip to content</a>
+<div class="lp">
+
+
+<header style="border-bottom: 1px solid var(--line)">
+  <div class="w row" style="min-height: 60px; padding-top: 8px; padding-bottom: 8px; gap: 8px 24px; flex-wrap: wrap">
+    <a href="#top" class="row" style="gap: 10px; font-weight: 600; font-size: 16px; letter-spacing: -.01em">
+      <span style="width: 26px; height: 26px; border-radius: 6px; background: var(--acc); color: var(--acc-tx); display: inline-flex; align-items: center; justify-content: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 15px; height: 15px; stroke-width: 2.4"><path d="M5 4h5v5H5z M14 15h5v5h-5z M10 6.5h3a3.5 3.5 0 0 1 3.5 3.5v5"></path></svg></span>AgentDock
+    </a>
+    <span class="f1"></span>
+    <nav class="row" style="gap: 24px; flex-wrap: wrap" aria-label="Site">
+      <a class="navl" href="#about">About</a>
+      <a class="navl" href="#features">Features</a>
+      <a class="navl" href="#download">Download</a>
+      <a class="navl row" style="gap: 6px" href="https://github.com/Manojlovic1998/AgentDock" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4 M9 18c-4.51 2-5-2-7-2"></path></svg>GitHub</a>
+    </nav>
+  </div>
+</header>
+
+
+<section id="top" class="hero-grid" style="padding: 88px 0 0; position: relative">
+  <div class="w" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px">
+    <span class="chip" style="height: 26px; padding: 0 11px; font-family: var(--f); font-size: 12.5px; background: var(--bg3); border: 1px solid var(--line2)">A desktop editor for Claude Code configuration</span>
+    <h1 style="font-size: clamp(34px, 6vw, 62px); line-height: 1.04; font-weight: 600; letter-spacing: -.035em; max-width: 820px; text-wrap: balance">See how your Claude Code setup fits together</h1>
+    <p class="t2" style="font-size: clamp(16px, 2vw, 19px); line-height: 1.55; max-width: 640px; text-wrap: pretty">AgentDock turns your agents, skills, commands, rules and MCP servers into a graph you can explore and edit, then shows every change as a diff before anything is written to disk.</p>
+    <div class="row" style="gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px">
+      <a class="btn pr" href="#download"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"></path></svg>Download AgentDock</a>
+      <a class="btn" href="https://github.com/Manojlovic1998/AgentDock" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4 M9 18c-4.51 2-5-2-7-2"></path></svg>View on GitHub</a>
+    </div>
+    <p class="t3" style="font-size: 13px">For macOS, Windows and Linux · Source on GitHub</p>
+  </div>
+
+  
+  <div class="w" style="margin-top: 56px; padding-bottom: 0">
+    <div style="overflow-x: auto; padding-bottom: 8px; margin-bottom: -8px">
+    <div class="win" role="img" aria-label="AgentDock showing the Acme Platform workspace: agents, skills and commands as a graph, with the angular-developer agent selected and its inspector open on the right">
+      <div class="wt">
+        <span style="width: 18px; height: 18px; border-radius: 5px; background: var(--acc); color: var(--acc-tx); display: inline-flex; align-items: center; justify-content: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 11px; height: 11px; stroke-width: 2.6"><path d="M5 4h5v5H5z M14 15h5v5h-5z M10 6.5h3a3.5 3.5 0 0 1 3.5 3.5v5"></path></svg></span>
+        <span style="font-weight: 600">AgentDock</span>
+        <span style="width: 1px; height: 14px; background: var(--line2)"></span>
+        <span class="row" style="gap: 6px; color: var(--tx2)">Acme Platform <span class="chip" style="height: 17px; font-size: 10px; padding: 0 5px">main</span></span>
+        <span class="f1"></span>
+        <span class="row t3" style="gap: 8px; width: 300px; height: 22px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--line2); background: var(--bg2); font-size: 11px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3"></path></svg><span class="f1">Search resources and commands</span><span class="mono" style="font-size: 10px">⌘K</span></span>
+        <span class="f1"></span>
+        <span style="color: var(--tx3); font-size: 11px" class="mono">2 unsaved</span>
+      </div>
+      <div style="display: flex">
+        
+        <div class="wsb">
+          <div class="wl" style="padding-top: 4px">Workspace</div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v9H3z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5H3z"></path></svg>Overview</div>
+          <div class="wn on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h4v4H5z M15 17h4v4h-4z M15 3h4v4h-4z M9 5h6 M7 7v8a4 4 0 0 0 4 4h4"></path></svg>Visual Workspace</div>
+          <div class="wl">Resources</div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8 M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M2 14h2 M20 14h2 M15 13v2 M9 13v2"></path></svg>Agents<span class="ct">5</span></div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg>Skills<span class="ct">9</span></div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"></path></svg>Commands<span class="ct">4</span></div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l2 2 4-4 M3 7l2 2 4-4 M13 6h8 M13 12h8 M13 18h8"></path></svg>Rules<span class="ct">3</span></div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22v-5 M9 8V2 M15 8V2 M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"></path></svg>MCP Servers<span class="ct">3</span></div>
+          <div class="wl">Tools</div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z M9 12l2 2 4-4"></path></svg>Validation<span class="ct" style="color: var(--c-agent)">4</span></div>
+          <div class="wn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12 M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 9a9 9 0 0 1-9 9"></path></svg>Changes<span class="ct" style="color: var(--acc)">2</span></div>
+        </div>
+
+        
+        <div class="cv">
+          <span class="col" style="left: 16px">Commands</span><span class="col" style="left: 220px">Agents</span><span class="col" style="left: 470px">Skills</span>
+
+          <span class="hl1" style="left: 166px; top: 79px; width: 54px"></span>
+          <span class="hl1 on" style="left: 166px; top: 185px; width: 54px"></span>
+          <span class="hl1" style="left: 166px; top: 345px; width: 54px"></span>
+
+          <svg class="edge dim" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 79 C25 79 25 60 50 60"></path></svg>
+          <svg class="edge dim" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 345 C25 345 25 116 50 116"></path></svg>
+          <svg class="edge dim" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 345 C25 345 25 228 50 228"></path></svg>
+          <svg class="edge dim" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 345 C25 345 25 340 50 340"></path></svg>
+          <svg class="edge hl" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 185 C25 185 25 60 50 60"></path></svg>
+          <svg class="edge hl" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 185 C25 185 25 116 50 116"></path></svg>
+          <svg class="edge hl" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 185 C25 185 25 172 50 172"></path></svg>
+          <svg class="edge hl" viewBox="0 0 50 488" aria-hidden="true"><path d="M0 185 C25 185 25 228 50 228"></path></svg>
+
+          <div class="nd k-cmd dim" style="left: 16px; top: 57px; width: 150px; height: 44px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"></path></svg></span><span style="min-width: 0"><span class="nn" style="display: block">/analyze-ticket</span></span></div>
+          <div class="nd k-cmd hl" style="left: 16px; top: 163px; width: 150px; height: 44px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"></path></svg></span><span style="min-width: 0"><span class="nn" style="display: block">/implement</span></span></div>
+          <div class="nd k-cmd dim" style="left: 16px; top: 323px; width: 150px; height: 44px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-6-6-6 M12 19h8"></path></svg></span><span style="min-width: 0"><span class="nn" style="display: block">/review-pr</span></span></div>
+
+          <div class="nd k-agent dim" style="left: 220px; top: 44px; width: 200px; height: 70px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8 M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M2 14h2 M20 14h2 M15 13v2 M9 13v2"></path></svg></span><span style="min-width: 0; display: flex; flex-direction: column"><span class="nn">ticket-analyst</span><span class="ns">Analyzes development tickets</span><span class="chip" style="height: 16px; font-size: 9.5px; padding: 0 5px; align-self: flex-start; margin-top: 3px">sonnet</span></span></div>
+          <div class="nd k-agent sel" style="left: 220px; top: 150px; width: 200px; height: 70px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8 M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M2 14h2 M20 14h2 M15 13v2 M9 13v2"></path></svg></span><span style="min-width: 0; display: flex; flex-direction: column"><span class="nn">angular-developer</span><span class="ns">Implements Angular features</span><span class="row" style="gap: 6px; margin-top: 3px"><span class="chip" style="height: 16px; font-size: 9.5px; padding: 0 5px">opus</span><span class="t2" style="font-size: 10px">4 skills</span></span></span></div>
+          <div class="nd k-agent dim" style="left: 220px; top: 310px; width: 200px; height: 70px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8 M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M2 14h2 M20 14h2 M15 13v2 M9 13v2"></path></svg></span><span style="min-width: 0; display: flex; flex-direction: column"><span class="nn">code-reviewer</span><span class="ns">Reviews implementation quality</span><span class="chip" style="height: 16px; font-size: 9.5px; padding: 0 5px; align-self: flex-start; margin-top: 3px">opus</span></span></div>
+
+          <div class="nd k-skill hl" style="left: 470px; top: 40px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">codebase-exploration</span></div>
+          <div class="nd k-skill hl" style="left: 470px; top: 96px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">angular-patterns</span></div>
+          <div class="nd k-skill hl" style="left: 470px; top: 152px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">kendo-components</span></div>
+          <div class="nd k-skill hl" style="left: 470px; top: 208px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">typescript-best-practices</span></div>
+          <div class="nd k-skill dim" style="left: 470px; top: 264px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">testing-strategy</span></div>
+          <div class="nd k-skill dim" style="left: 470px; top: 320px; width: 210px; height: 40px"><span class="nt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span><span class="nn">code-review</span></div>
+
+          <span class="row mono t2" style="position: absolute; left: 12px; bottom: 12px; gap: 8px; height: 26px; padding: 0 10px; background: var(--bg3); border: 1px solid var(--line2); border-radius: 7px; font-size: 11px">− &nbsp;83%&nbsp; +</span>
+        </div>
+
+        
+        <div class="wi">
+          <div class="row k-agent" style="gap: 9px; padding: 10px 12px">
+            <span class="nt" style="width: 28px; height: 28px; border-radius: 7px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8 M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z M2 14h2 M20 14h2 M15 13v2 M9 13v2"></path></svg></span>
+            <div class="f1"><div class="mono el" style="font-size: 12px; font-weight: 600">angular-developer</div><div class="row t3" style="gap: 6px; font-size: 10.5px">Agent <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--ok)"></span>Valid</div></div>
+          </div>
+          <div class="wtab"><span class="on">Overview</span><span>Config</span><span>Skills</span><span>Source</span></div>
+          <div class="wsec"><span class="wsl">Description</span><span style="font-size: 11.5px; line-height: 1.45">Implements Angular features following project conventions.</span></div>
+          <div class="wsec"><span class="wsl">Details</span>
+            <div style="display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 5px 6px; font-size: 11px"><span class="t3">Model</span><span class="mono">opus</span><span class="t3">Permission</span><span class="mono">acceptEdits</span><span class="t3">File</span><span class="mono el">.claude/agents/…</span></div>
+          </div>
+          <div class="wsec" style="border-bottom: 0"><span class="wsl">Associated skills · 4</span>
+            <div class="row mono" style="gap: 7px; font-size: 11px"><span class="nt k-skill" style="--k: var(--c-skill); width: 18px; height: 18px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 10px; height: 10px"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span>angular-patterns</div>
+            <div class="row mono" style="gap: 7px; font-size: 11px"><span class="nt k-skill" style="--k: var(--c-skill); width: 18px; height: 18px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 10px; height: 10px"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span>kendo-components</div>
+            <div class="row mono" style="gap: 7px; font-size: 11px"><span class="nt k-skill" style="--k: var(--c-skill); width: 18px; height: 18px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 10px; height: 10px"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span>codebase-exploration</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+
+<section id="about" style="padding: 112px 0 40px">
+  <div class="w" style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px">
+    <span class="lb">What it is</span>
+    <h2 style="font-size: clamp(26px, 4vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -.03em; max-width: 760px; text-wrap: balance">Claude Code configuration lives in a dozen kinds of files. AgentDock puts it on one canvas.</h2>
+    <p class="t2" style="max-width: 640px; font-size: 16.5px; text-wrap: pretty">It reads the files Claude Code already uses, such as <span class="ph">.claude/</span>, <span class="ph">.mcp.json</span> and <span class="ph">CLAUDE.md</span>, so there is no new format to adopt. AgentDock edits configuration. It never runs your agents.</p>
+    <div class="row" style="gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; max-width: 760px">
+      <span class="chip">Agents</span><span class="chip">Skills</span><span class="chip">Commands</span><span class="chip">Rules</span><span class="chip">CLAUDE.md</span><span class="chip">Settings</span><span class="chip">Hooks</span><span class="chip">Output styles</span><span class="chip">MCP servers</span><span class="chip">Plugins</span><span class="chip">Memory</span>
+    </div>
+  </div>
+</section>
+
+
+<section id="features" style="padding: 56px 0 96px">
+  <div class="w" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px">
+    <article class="card">
+      <span class="tile k-skill"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h4v4H5z M15 17h4v4h-4z M15 3h4v4h-4z M9 5h6 M7 7v8a4 4 0 0 0 4 4h4"></path></svg></span>
+      <h3 style="font-size: 17px; font-weight: 600; letter-spacing: -.015em">See the relationships</h3>
+      <p class="t2" style="text-wrap: pretty">Select an agent and its skills light up. Drag a skill onto an agent to connect them. Missing and broken references show up on the canvas, not in a stack trace.</p>
+    </article>
+    <article class="card">
+      <span class="tile k-agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18l6-6-6-6 M8 6l-6 6 6 6"></path></svg></span>
+      <h3 style="font-size: 17px; font-weight: 600; letter-spacing: -.015em">Edit in place</h3>
+      <p class="t2" style="text-wrap: pretty">Change frontmatter, tool lists and instructions from one inspector. The raw markdown or JSON is always one tab away, with syntax highlighting.</p>
+    </article>
+    <article class="card">
+      <span class="tile k-cmd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12 M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M18 9a9 9 0 0 1-9 9"></path></svg></span>
+      <h3 style="font-size: 17px; font-weight: 600; letter-spacing: -.015em">Review before you save</h3>
+      <p class="t2" style="text-wrap: pretty">Validation lists errors, warnings and notes with a jump to the resource. Every edit appears as a diff, and nothing reaches disk until you save.</p>
+    </article>
+  </div>
+</section>
+
+
+<section id="download" style="padding: 88px 0 96px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--bg1)">
+  <div class="w" style="display: flex; flex-direction: column; gap: 36px">
+    <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px">
+      <span class="lb">Download</span>
+      <h2 style="font-size: clamp(26px, 4vw, 38px); line-height: 1.12; font-weight: 600; letter-spacing: -.03em">Get AgentDock</h2>
+      <p class="t2" style="max-width: 520px; text-wrap: pretty">Installers are published on GitHub Releases.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px">
+      <article class="card" style="background: var(--bg2)">
+        <div class="row" style="gap: 12px"><span class="tile" style="--k: var(--tx2)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z M8 21h8 M12 17v4"></path></svg></span><div><h3 style="font-size: 16px; font-weight: 600">macOS</h3><p class="t3 mono" style="font-size: 12px">Apple silicon and Intel · <span class="ph">[.dmg]</span></p></div></div>
+        <a class="btn pr" href="https://github.com/Manojlovic1998/AgentDock/releases/latest" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"></path></svg>Download for macOS</a>
+      </article>
+      <article class="card" style="background: var(--bg2)">
+        <div class="row" style="gap: 12px"><span class="tile" style="--k: var(--tx2)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z M8 21h8 M12 17v4"></path></svg></span><div><h3 style="font-size: 16px; font-weight: 600">Windows</h3><p class="t3 mono" style="font-size: 12px">Windows 10 and later · <span class="ph">[.exe]</span></p></div></div>
+        <a class="btn pr" href="https://github.com/Manojlovic1998/AgentDock/releases/latest" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"></path></svg>Download for Windows</a>
+      </article>
+      <article class="card" style="background: var(--bg2)">
+        <div class="row" style="gap: 12px"><span class="tile" style="--k: var(--tx2)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z M8 21h8 M12 17v4"></path></svg></span><div><h3 style="font-size: 16px; font-weight: 600">Linux</h3><p class="t3 mono" style="font-size: 12px">x64 · <span class="ph">[.AppImage / .deb]</span></p></div></div>
+        <a class="btn pr" href="https://github.com/Manojlovic1998/AgentDock/releases/latest" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3"></path></svg>Download for Linux</a>
+      </article>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px; width: 100%; margin: 8px auto 0">
+      <div class="row" style="gap: 12px; flex-wrap: wrap"><span class="lb f1">Or build from source</span><a class="btn sm" href="https://github.com/Manojlovic1998/AgentDock" rel="noopener">Read the README<svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14 M12 5l7 7-7 7"></path></svg></a></div>
+      <div class="code"><span class="t3">$ </span>git clone https://github.com/Manojlovic1998/AgentDock.git</div>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding: 48px 0 56px">
+  <div class="w" style="display: flex; flex-direction: column; gap: 32px">
+    <div class="row" style="gap: 32px; flex-wrap: wrap; align-items: flex-start">
+      <div class="f1" style="min-width: 240px; display: flex; flex-direction: column; gap: 10px">
+        <span class="row" style="gap: 10px; font-weight: 600; font-size: 15px"><span style="width: 22px; height: 22px; border-radius: 6px; background: var(--acc); color: var(--acc-tx); display: inline-flex; align-items: center; justify-content: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px; stroke-width: 2.4"><path d="M5 4h5v5H5z M14 15h5v5h-5z M10 6.5h3a3.5 3.5 0 0 1 3.5 3.5v5"></path></svg></span>AgentDock</span>
+        <p class="t3" style="max-width: 320px; font-size: 13.5px">A visual editor for Claude Code configuration.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; min-width: 140px"><span class="lb">Project</span><a class="t2 navl" href="https://github.com/Manojlovic1998/AgentDock" rel="noopener">GitHub repository</a><a class="t2 navl" href="https://github.com/Manojlovic1998/AgentDock/releases" rel="noopener">Releases</a><a class="t2 navl" href="https://github.com/Manojlovic1998/AgentDock/issues" rel="noopener">Report an issue</a></div>
+      <div style="display: flex; flex-direction: column; gap: 8px; min-width: 140px"><span class="lb">On this page</span><a class="t2 navl" href="#about">About</a><a class="t2 navl" href="#features">Features</a><a class="t2 navl" href="#download">Download</a></div>
+    </div>
+    <div class="legal t3">
+      <p><strong>Independent project.</strong> AgentDock is not affiliated with, endorsed by, sponsored by or otherwise connected to Anthropic, PBC. "Anthropic", "Claude" and "Claude Code" are trademarks of Anthropic, PBC. They are used on this site only to describe which configuration files AgentDock can edit.</p>
+      <p>AgentDock is free software, released under the <a class="ul" href="https://github.com/Manojlovic1998/AgentDock/blob/main/LICENSE" rel="noopener">Apache License 2.0</a>. Copyright 2026 Nemanja Manojlovic. This site uses the <a class="ul" href="fonts/OFL.txt">Inter and JetBrains Mono</a> typefaces under the SIL Open Font License 1.1. It sets no cookies and loads nothing from third-party servers.</p>
+    </div>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

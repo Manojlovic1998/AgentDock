@@ -16,7 +16,7 @@ import { Icon } from '../../ui/icon';
         <div class="min-w-60 flex-1">
           <h1 class="m-0 text-[17px] font-semibold tracking-[-0.01em]">{{ ws.snapshot.name }}</h1>
           <div class="mt-0.5 font-mono text-[11.5px] text-tx3">
-            {{ ws.snapshot.path }} · branch {{ ws.snapshot.branch }} · scanned 2 minutes ago
+            {{ ws.snapshot.path }} · branch {{ ws.snapshot.branch }} · scanned {{ ws.snapshot.scanned }}
           </div>
         </div>
         <button class="bt" (click)="cmd.runValidation()"><svg adIcon="shield"></svg>Run validation</button>
