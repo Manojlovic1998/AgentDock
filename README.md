@@ -181,3 +181,7 @@ watched, because Claude Code rewrites it constantly; use **Rescan workspace** fo
 - Real files need the desktop app. The browser build (`npm start`) always shows the sample.
 - Installers are not code signed and there is no auto-update. macOS and Linux builds are configured
   but only the Windows installer has been run so far.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
