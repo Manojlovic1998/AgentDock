@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { IconName } from '../../core/model/icons';
 import { Accent, BoolPref, PrefsStore, TextPref, Theme } from '../../core/state/prefs.store';
+import { UpdateStore } from '../../core/state/update.store';
 import { Icon } from '../../ui/icon';
 import { SegOption, Segmented } from '../../ui/segmented';
 import { Switch } from '../../ui/switch';
@@ -147,6 +148,29 @@ const ACCENTS: Accent[] = ['ember', 'iris', 'mint', 'sky'];
           }
         </section>
       }
+      @if (update.supported && update.state(); as u) {
+        <section class="pnl">
+          <div class="ph"><svg adIcon="zap" class="text-tx3"></svg><span class="font-semibold">About and updates</span></div>
+          <div class="flex flex-wrap items-center gap-4 border-b border-line px-3 py-[9px]">
+            <div class="min-w-[200px] flex-1">
+              <div class="font-medium">AgentDock {{ u.current }}</div>
+              <div class="mt-px text-[11.5px] text-tx3" role="status">{{ updateLine() }}</div>
+            </div>
+            @if (u.status === 'available' || u.status === 'downloaded') {
+              <button class="bt pr" (click)="update.dialogOpen.set(true)">View update</button>
+            } @else {
+              <button class="bt" [disabled]="u.status === 'checking' || u.status === 'downloading'" (click)="update.check()">Check for updates</button>
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-4 px-3 py-[9px]">
+            <div class="min-w-[200px] flex-1">
+              <div class="font-medium">Check for updates automatically</div>
+              <div class="mt-px text-[11.5px] text-tx3">Looks once, shortly after AgentDock starts. You always choose whether to download.</div>
+            </div>
+            <button adSwitch [checked]="u.autoCheck" aria-label="Check for updates automatically" (click)="update.setAutoCheck(!u.autoCheck)"></button>
+          </div>
+        </section>
+      }
     </div>
   `,
   host: { class: 'scr block min-h-0 flex-1 overflow-y-auto px-6 py-5' },
@@ -154,8 +178,30 @@ const ACCENTS: Accent[] = ['ember', 'iris', 'mint', 'sky'];
 })
 export class Settings {
   protected readonly prefs = inject(PrefsStore);
+  protected readonly update = inject(UpdateStore);
   protected readonly sections = SECTIONS;
   protected readonly accents = ACCENTS;
+
+  /** One line under the version: what the last check found. */
+  protected updateLine(): string {
+    const u = this.update.state();
+    switch (u?.status) {
+      case 'checking':
+        return 'Checking for updates…';
+      case 'available':
+        return `Version ${u.version} is available.`;
+      case 'downloading':
+        return `Downloading version ${u.version}… ${u.percent ?? 0}%`;
+      case 'downloaded':
+        return `Version ${u.version} is ready to install.`;
+      case 'uptodate':
+        return 'You are on the latest version.';
+      case 'error':
+        return u.error ?? 'The check failed.';
+      default:
+        return 'Releases are published on GitHub.';
+    }
+  }
 
   protected choice(key: 'theme' | 'density' | 'edge'): string {
     return key === 'theme' ? this.prefs.theme() : this.prefs.prefs()[key];

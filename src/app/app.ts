@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { Commands } from './core/state/commands';
 import { TourStore } from './core/state/tour.store';
 import { UiStore } from './core/state/ui.store';
+import { UpdateStore } from './core/state/update.store';
 import { Inspector } from './features/inspector/inspector';
 import { CommandPalette } from './features/overlays/command-palette';
 import { ContextMenu } from './features/overlays/context-menu';
@@ -12,6 +13,7 @@ import { HookDialog } from './features/overlays/hook-dialog';
 import { RenameDialog } from './features/overlays/rename-dialog';
 import { ToastOutlet } from './features/overlays/toast';
 import { TourOutlet } from './features/overlays/tour-outlet';
+import { UpdateDialog } from './features/overlays/update-dialog';
 import { BottomPanel } from './features/shell/bottom-panel';
 import { Sidebar } from './features/shell/sidebar';
 import { StatusBar } from './features/shell/status-bar';
@@ -34,6 +36,7 @@ import { TitleBar } from './features/shell/title-bar';
     HookDialog,
     ToastOutlet,
     TourOutlet,
+    UpdateDialog,
   ],
   template: `
     <ad-title-bar />
@@ -69,6 +72,9 @@ import { TitleBar } from './features/shell/title-bar';
     @if (ui.palette()) {
       <ad-command-palette />
     }
+    @if (update.dialogOpen()) {
+      <ad-update-dialog />
+    }
     <ad-toast-outlet />
     <ad-tour-outlet />
   `,
@@ -82,6 +88,7 @@ export class App {
   protected readonly ui = inject(UiStore);
   private readonly cmd = inject(Commands);
   private readonly tour = inject(TourStore);
+  protected readonly update = inject(UpdateStore);
 
   protected readonly showInspector = computed(() => this.cmd.screen() === 'workspace' && this.ui.inspOpen());
 
@@ -101,6 +108,7 @@ export class App {
       // A walkthrough stays: Escape there closes the menu or dialog the user is working in.
       if (kind && kind !== 'walkthrough') this.tour.stop();
       this.ui.closeOverlays();
+      this.update.later();
     } else if (kind === 'tour' && e.key === 'ArrowRight') {
       this.tour.next();
     } else if (kind === 'tour' && e.key === 'ArrowLeft') {

@@ -1,5 +1,6 @@
 import { BrowserWindow, app, ipcMain, shell } from 'electron';
 import * as path from 'node:path';
+import { registerUpdaterIpc } from './updater';
 import { registerWorkspaceIpc } from './workspace';
 
 const DEV_URL = process.env['AGENTDOCK_DEV_URL'];
@@ -47,9 +48,12 @@ ipcMain.on('window:toggle-maximize', (e) => {
 });
 ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close());
 registerWorkspaceIpc();
+const updater = registerUpdaterIpc(() => BrowserWindow.getAllWindows()[0]);
 
 void app.whenReady().then(() => {
   createWindow();
+  // Look for a new version once the app has settled, so the check never competes with startup.
+  setTimeout(() => updater.checkOnStartup(), 10_000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

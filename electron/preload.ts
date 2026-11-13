@@ -20,6 +20,15 @@ contextBridge.exposeInMainWorld('agentDock', {
   copy: (from: string, to: string, items: unknown[], replace: boolean) => ipcRenderer.invoke('workspace:copy', from, to, items, replace),
   watch: (root: string, user: boolean) => ipcRenderer.invoke('workspace:watch', root, user),
   unwatch: () => ipcRenderer.invoke('workspace:unwatch'),
+  getUpdateState: () => ipcRenderer.invoke('updater:state'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
+  skipUpdate: () => ipcRenderer.invoke('updater:skip'),
+  setAutoUpdateCheck: (on: boolean) => ipcRenderer.invoke('updater:set-auto', on),
+  onUpdateState: (listener: (state: unknown) => void) => {
+    ipcRenderer.on('updater:state', (_event, state: unknown) => listener(state));
+  },
   onChanged: (listener: () => void) => {
     ipcRenderer.on('workspace:changed', () => listener());
   },

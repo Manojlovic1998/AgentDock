@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: Linux, os: ubuntu-latest, script: 'electron:build:linux', files: 'release/*.AppImage' }
+          - { name: Linux, os: ubuntu-latest, script: 'electron:build:linux', files: 'release/{*.AppImage,latest-linux.yml}' }
           - { name: macOS, os: macos-latest, script: 'electron:build:mac', files: 'release/*.dmg' }
-          - { name: Windows, os: windows-latest, script: 'electron:build:win', files: 'release/*.exe' }
+          - { name: Windows, os: windows-latest, script: 'electron:build:win', files: 'release/{*.exe,*.exe.blockmap,latest.yml}' }
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
