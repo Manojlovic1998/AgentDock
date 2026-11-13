@@ -15,6 +15,8 @@ const state = (patch: Partial<WorkspaceState> = {}): WorkspaceState => ({
   deleted: [],
   deletedSaved: [],
   presets: [],
+  docs: {},
+  baseDocs: {},
   ...patch,
 });
 

@@ -157,16 +157,64 @@
       @if (has()['cf']) {
       <div ngTabPanel value="cf">
         <ng-template ngTabContent>
+          @if (n.type !== 'mem') {
           <div class="sec">
-            <span class="lb">Frontmatter</span>
+            <span class="lb">{{ n.type === 'mcp' ? 'Server' : 'Frontmatter' }}</span>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] text-tx2">name</span>
-              <input class="inp font-mono !text-[11.5px]" data-tour="insp-name" [value]="n.name" (input)="edit({ name: text($event) })" />
+              <input
+                class="inp font-mono !text-[11.5px]"
+                data-tour="insp-name"
+                [value]="n.name"
+                [disabled]="nameLocked()"
+                (input)="edit({ name: text($event) })"
+              />
+              @if (nameHint(); as hint) {
+                <span class="text-[11px] text-tx3">{{ hint }}</span>
+              }
             </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-[11px] text-tx2">description</span>
-              <textarea class="inp" rows="3" [value]="n.desc" (input)="edit({ desc: text($event) })"></textarea>
-            </label>
+            @if (n.type === 'agent' || n.type === 'skill' || n.type === 'cmd') {
+              <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2">description</span>
+                <textarea class="inp" rows="3" [value]="n.desc" (input)="edit({ desc: text($event) })"></textarea>
+              </label>
+            }
+            @if (n.type === 'cmd') {
+              <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2">argument-hint</span>
+                <input class="inp font-mono !text-[11.5px]" placeholder="[ticket-key]" [value]="n.hint ?? ''" (input)="edit({ hint: text($event) })" />
+              </label>
+            }
+            @if (n.type === 'rule') {
+              <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2">paths</span>
+                <input class="inp font-mono !text-[11.5px]" placeholder="src/**/*.ts, tests/**" [value]="n.paths ?? ''" (input)="edit({ paths: text($event) })" />
+                <span class="text-[11px] text-tx3">Comma-separated globs. Empty loads the rule for every file.</span>
+              </label>
+            }
+            @if (n.type === 'mcp') {
+              <div class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2" id="insp-transport">transport</span>
+                <ad-segmented
+                  class="self-start"
+                  aria-labelledby="insp-transport"
+                  [mono]="true"
+                  [options]="transports"
+                  [value]="n.transport ?? 'http'"
+                  (valueChange)="edit({ transport: $event })"
+                />
+              </div>
+              <label class="flex flex-col gap-1">
+                <span class="text-[11px] text-tx2">{{ n.transport === 'stdio' ? 'command' : 'url' }}</span>
+                <input
+                  class="inp font-mono !text-[11.5px]"
+                  [placeholder]="n.transport === 'stdio' ? 'npx -y @scope/server' : 'https://example.com/mcp'"
+                  [value]="n.url ?? ''"
+                  (input)="edit({ url: text($event), desc: text($event) })"
+                />
+                <span class="text-[11px] text-tx3">Environment variables, headers and other keys are kept as they are in the file.</span>
+              </label>
+            }
             @if (n.type === 'agent') {
               <div class="flex flex-col gap-1">
                 <span class="text-[11px] text-tx2" id="insp-model">model</span>
@@ -195,6 +243,7 @@
                 </div>
               </div>
             }
+            @if (n.type === 'agent' || n.type === 'skill') {
             <div class="flex flex-col gap-1">
               <span class="text-[11px] text-tx2">{{ n.type === 'agent' ? 'tools' : 'allowed-tools' }}</span>
               <div class="flex flex-wrap items-center gap-1">
@@ -203,20 +252,24 @@
                 }
               </div>
             </div>
+            }
           </div>
+          }
+          @if (n.type !== 'mcp') {
           <div class="sec !border-b-0">
             <div class="flex items-center">
-              <span class="lb flex-1">Instructions</span>
+              <span class="lb flex-1">{{ bodyTitle() }}</span>
               <span class="chip">markdown</span>
             </div>
             <textarea
               class="inp font-mono !text-[11px]"
-              rows="12"
-              aria-label="Instructions"
+              [rows]="n.type === 'mem' ? 22 : 12"
+              [attr.aria-label]="bodyTitle()"
               [value]="n.body ?? ''"
-              (input)="edit({ body: text($event) })"
+              (input)="editBody(text($event))"
             ></textarea>
           </div>
+          }
         </ng-template>
       </div>
       }

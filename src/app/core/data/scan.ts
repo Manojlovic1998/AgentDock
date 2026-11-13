@@ -2,7 +2,7 @@
  * What the Electron main process returns from a scan: file contents and a few facts only it can
  * know. Parsing happens in the renderer (build-snapshot.ts). Mirrored in electron/workspace.ts.
  */
-export type ScanScope = 'project' | 'local' | 'user' | 'plugin';
+export type ScanScope = 'managed' | 'project' | 'local' | 'user' | 'plugin';
 
 export type ScanKind = 'agent' | 'skill' | 'cmd' | 'rule' | 'style' | 'settings' | 'claudemd' | 'mcp' | 'memory' | 'other';
 
@@ -41,6 +41,8 @@ export interface ScanResult {
 export interface ScanOptions {
   user: boolean;
   plugins: boolean;
+  /** Read the settings and MCP servers an organization deployed to this machine. */
+  managed: boolean;
   /** Folder names skipped during discovery. */
   ignore: string[];
 }

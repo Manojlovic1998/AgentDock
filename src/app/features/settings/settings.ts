@@ -49,7 +49,7 @@ const SECTIONS: { label: string; icon: IconName; rows: Row[] }[] = [
       text('fontSize', 'Source font size', 'Pixels, applied to source and diff views.'),
       toggle('wrap', 'Word wrap', 'Wrap long lines in source previews.'),
       toggle('lineNo', 'Line numbers', 'Show line numbers in source previews.'),
-      toggle('fmt', 'Normalize frontmatter on save', 'Sort keys and fix indentation when writing files.'),
+      toggle('normalize', 'Normalize frontmatter on save', 'Sort keys and fix indentation in the files you change.'),
     ],
   },
   {
@@ -77,7 +77,7 @@ const SECTIONS: { label: string; icon: IconName; rows: Row[] }[] = [
     icon: 'folder',
     rows: [
       text('root', 'Project root', 'Folder scanned for .claude/ and .mcp.json.'),
-      toggle('autosave', 'Write changes immediately', 'Off keeps edits pending until you save in Changes.'),
+      toggle('autosave', 'Write changes immediately', 'Saves a moment after each edit. Off keeps edits pending until you save in Changes.'),
       toggle('confirm', 'Confirm before deleting', 'Ask before removing a resource and its references.'),
     ],
   },
@@ -87,8 +87,8 @@ const SECTIONS: { label: string; icon: IconName; rows: Row[] }[] = [
     rows: [
       toggle('scanUser', 'Include user scope', 'Read agents, skills and settings from ~/.claude/.'),
       toggle('scanPlugins', 'Include installed plugins', 'Show resources contributed by plugins.'),
-      toggle('managed', 'Include managed settings', 'Read organization-managed settings when present.'),
-      toggle('watch', 'Watch files for external changes', 'Reload when configuration changes on disk.'),
+      toggle('managed', 'Include managed settings', 'Read organization-managed settings and MCP servers when present. Always read-only.'),
+      toggle('watch', 'Watch files for external changes', 'Reload when configuration changes on disk. Pending edits are never discarded.'),
       text('ignore', 'Ignored folders', 'Comma-separated, skipped during discovery.'),
     ],
   },

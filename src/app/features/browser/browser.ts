@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { STATUS_LABEL, labelOf, plural } from '../../core/model/graph';
+import { scriptOf } from '../../core/data/build-snapshot';
+import { HookAt } from '../../core/model/hooks';
 import { IconName, iconFor } from '../../core/model/icons';
 import { Kind, KindOrNone, Resource, Status } from '../../core/model/types';
 import { Commands } from '../../core/state/commands';
@@ -22,6 +24,10 @@ interface Row {
   stLabel: string;
   mod: string;
   editTab: 'cf' | 'src';
+  /** File behind a row that has no graph node but can be edited as text. */
+  file: string | null;
+  /** The hook a row of the Hooks list stands for. */
+  hook: { file: string; at: HookAt; writable: boolean } | null;
 }
 
 interface Listing {
@@ -29,8 +35,14 @@ interface Listing {
   sub: string;
   cols: [string, string, string, string];
   rows: Row[];
-  create: 'agent' | 'skill' | null;
+  /** Kind the "New" button of this list creates, with the word shown on it. */
+  create: { type: Kind; label: string } | null;
+  /** The list has a "New hook" button. */
+  newHook?: boolean;
 }
+
+/** Word on the "New" button of each list that can create resources. */
+const CREATE_LABEL: Partial<Record<Kind, string>> = { agent: 'agent', skill: 'skill', cmd: 'command', rule: 'rule', mcp: 'server' };
 
 /** Lists backed by graph resources: [kind, title, subtitle, column headers]. */
 const NODE_SCREENS: Record<string, [Kind, string, string, [string, string, string]]> = {
@@ -70,8 +82,11 @@ const STATIC_ICON: Record<string, IconName> = {
           (input)="query.set($any($event.target).value)"
         />
       </div>
-      @if (listing().create; as type) {
-        <button class="bt pr" (click)="cmd.addNode(type)"><svg adIcon="plus"></svg>New {{ type }}</button>
+      @if (listing().newHook) {
+        <button class="bt pr" (click)="ui.hook.set({ file: ws.hookFiles()[0], at: null })"><svg adIcon="plus"></svg>New hook</button>
+      }
+      @if (listing().create; as c) {
+        <button class="bt pr" (click)="cmd.addNode(c.type)"><svg adIcon="plus"></svg>New {{ c.label }}</button>
       }
     </div>
     <div class="scr min-h-0 flex-1 overflow-auto">
@@ -104,7 +119,7 @@ const STATIC_ICON: Record<string, IconName> = {
                 <button class="ib" adTip="Edit" [tipEnd]="true" aria-label="Edit" (click)="cmd.focusNode(id, r.editTab)">
                   <svg adIcon="pencil"></svg>
                 </button>
-                @if (r.type === 'agent' || r.type === 'skill') {
+                @if (r.type !== 'mem') {
                   <button
                     class="ib"
                     adTip="Copy to another project"
@@ -117,6 +132,19 @@ const STATIC_ICON: Record<string, IconName> = {
                 }
                 <button class="ib !text-err" adTip="Delete" [tipEnd]="true" aria-label="Delete" (click)="cmd.askDelete(id)">
                   <svg adIcon="trash"></svg>
+                </button>
+              } @else if (r.hook; as h) {
+                @if (h.writable) {
+                  <button class="ib" adTip="Edit" [tipEnd]="true" aria-label="Edit" (click)="ui.hook.set({ file: h.file, at: h.at })">
+                    <svg adIcon="pencil"></svg>
+                  </button>
+                  <button class="ib !text-err" adTip="Delete" [tipEnd]="true" aria-label="Delete" (click)="ws.removeHook(h.file, h.at)">
+                    <svg adIcon="trash"></svg>
+                  </button>
+                }
+              } @else if (r.file; as file) {
+                <button class="ib" adTip="Edit source" [tipEnd]="true" aria-label="Edit source" (click)="cmd.openDoc(file)">
+                  <svg adIcon="pencil"></svg>
                 </button>
               }
             </span>
@@ -132,8 +160,8 @@ const STATIC_ICON: Record<string, IconName> = {
 })
 export class Browser {
   protected readonly cmd = inject(Commands);
-  private readonly ws = inject(WorkspaceStore);
-  private readonly ui = inject(UiStore);
+  protected readonly ws = inject(WorkspaceStore);
+  protected readonly ui = inject(UiStore);
 
   /** Route parameter: agents, skills, hooks, activity, ... */
   readonly kind = input('agents');
@@ -152,10 +180,41 @@ export class Browser {
         sub,
         cols: [c[0], c[1], c[2], 'Modified'],
         rows: m.list.filter((n) => n.type === type && !n.missing).map((n) => this.nodeRow(n)),
-        create: type === 'agent' || type === 'skill' ? type : null,
+        create: { type, label: CREATE_LABEL[type] ?? type },
       };
     }
     const table = this.ws.snapshot.tables[kind];
+    if (kind === 'hooks' && table && this.ws.persistent) {
+      // Read from the current text of the settings files, so pending hook edits show up here.
+      return {
+        title: table.title,
+        sub: table.sub,
+        cols: [table.c[0], table.c[1], table.c[2], 'Modified'],
+        rows: this.ws.hooks().map((h, i) => {
+          const scanned = table.rows.find((r) => r[1] === h.command && r[2] === h.event);
+          const script = scriptOf(h.command);
+          const st = scanned?.[4] ?? 'ok';
+          return {
+            key: 'hook:' + i,
+            id: null,
+            type: 'x' as const,
+            icon: 'hook' as const,
+            name: script ? script.slice(script.lastIndexOf('/') + 1).replace(/\.[a-z0-9]+$/i, '') : h.command.trim().split(/\s+/)[0],
+            desc: h.command,
+            a: h.event,
+            b: h.matcher,
+            st,
+            stLabel: STATUS_LABEL[st],
+            mod: scanned?.[5] ?? 'edited',
+            editTab: 'src' as const,
+            file: null,
+            hook: { file: h.file, at: h.at, writable: h.writable },
+          };
+        }),
+        create: null,
+        newHook: true,
+      };
+    }
     if (table) {
       const claude = kind === 'claudemd' ? m.by['mem:claude'] : undefined;
       return {
@@ -176,9 +235,12 @@ export class Browser {
             stLabel: STATUS_LABEL[r[4]],
             mod: r[5],
             editTab: 'src' as const,
+            file: r[6] ?? null,
+            hook: null,
           })),
         ),
-        create: null,
+        // A project has one CLAUDE.md, so it can only be created while there is none.
+        create: kind === 'claudemd' && !claude ? { type: 'mem', label: 'CLAUDE.md' } : null,
       };
     }
     return {
@@ -201,6 +263,8 @@ export class Browser {
           stLabel: 'Logged',
           mod: a.t,
           editTab: 'src' as const,
+          file: null,
+          hook: null,
         })),
       create: null,
     };
@@ -240,12 +304,15 @@ export class Browser {
       st,
       stLabel: STATUS_LABEL[st],
       mod: n.mod,
-      editTab: n.type === 'agent' || n.type === 'skill' ? 'cf' : 'src',
+      editTab: 'cf',
+      file: null,
+      hook: null,
     };
   }
 
   protected open(r: Row): void {
     if (r.id) this.cmd.focusNode(r.id);
-    else if (this.kind() !== 'activity') this.ui.note(r.name + ' has no graph node. Open it from the source tree.');
+    else if (r.file) this.cmd.openDoc(r.file);
+    else if (r.hook?.writable) this.ui.hook.set({ file: r.hook.file, at: r.hook.at });
   }
 }

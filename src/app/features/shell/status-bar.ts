@@ -20,7 +20,13 @@ import { Icon } from '../../ui/icon';
       <svg adIcon="branch" class="s"></svg>{{ changeLabel() }}
     </button>
     <span class="flex-1"></span>
-    <span class="sb max-wide:hidden"><span class="dot"></span>Watching .claude/ and ~/.claude/</span>
+    @if (ws.stale()) {
+      <button class="sb" adTip="Files changed outside AgentDock. Rescan to load them" [tipAbove]="true" (click)="ws.rescan()">
+        <svg adIcon="alert" class="s c-warn"></svg>Changed on disk
+      </button>
+    } @else {
+      <span class="sb max-wide:hidden"><span class="dot" [style.background]="ws.watching() ? null : 'var(--tx3)'"></span>{{ ws.watchLabel() }}</span>
+    }
     <span class="sb font-mono max-wide:hidden">{{ totalLabel() }}</span>
     <span class="sb font-mono">{{ zoomPct() }}</span>
     <button

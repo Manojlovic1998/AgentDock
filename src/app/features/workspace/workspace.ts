@@ -1,6 +1,8 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { labelOf } from '../../core/model/graph';
+import { iconFor } from '../../core/model/icons';
+import { Kind } from '../../core/model/types';
 import { Commands } from '../../core/state/commands';
 import { UiStore } from '../../core/state/ui.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
@@ -54,6 +56,12 @@ type View = 'graph' | 'source';
             <svg adIcon="zap" class="kc"></svg>Skill<span class="flex-1"></span>
             <span class="t3 font-mono text-[10.5px]">.claude/skills</span>
           </div>
+          @for (k of moreKinds; track k.type) {
+            <div ngMenuItem class="mi" [class]="'k-' + k.type" [value]="k.create">
+              <svg [adIcon]="k.icon" class="kc"></svg>{{ k.label }}<span class="flex-1"></span>
+              <span class="t3 ml-4 font-mono text-[10.5px]">{{ k.where }}</span>
+            </div>
+          }
         </div>
       </div>
       <button class="bt gh" adTip="Tidy node positions" (click)="cmd.autoLayout()"><svg adIcon="layout"></svg>Auto-layout</button>
@@ -91,6 +99,15 @@ export class Workspace {
 
   protected readonly newAgent = () => this.cmd.addNode('agent');
   protected readonly newSkill = () => this.cmd.addNode('skill');
+  /** The other kinds the New menu can create, with the place each one is saved to. */
+  protected readonly moreKinds = (
+    [
+      ['cmd', 'Command', '.claude/commands'],
+      ['rule', 'Rule', '.claude/rules'],
+      ['mcp', 'MCP server', '.mcp.json'],
+      ['mem', 'CLAUDE.md', 'project root'],
+    ] as [Kind, string, string][]
+  ).map(([type, label, where]) => ({ type, label, where, icon: iconFor(type), create: () => this.cmd.addNode(type) }));
 
   protected readonly matchLabel = computed(() => {
     const q = this.ui.q().trim().toLowerCase();

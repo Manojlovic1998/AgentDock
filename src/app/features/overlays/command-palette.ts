@@ -106,6 +106,12 @@ export class CommandPalette {
       ['Rescan workspace', 'folder', () => this.cmd.rescan()],
       ['Open folder…', 'folder', () => this.cmd.openFolder()],
       ['Open settings', 'gear', () => this.cmd.go('settings')],
+      ['New agent', 'plus', () => this.cmd.addNode('agent')],
+      ['New skill', 'plus', () => this.cmd.addNode('skill')],
+      ['New command', 'plus', () => this.cmd.addNode('cmd')],
+      ['New rule', 'plus', () => this.cmd.addNode('rule')],
+      ['New MCP server', 'plus', () => this.cmd.addNode('mcp')],
+      ['New CLAUDE.md', 'plus', () => this.cmd.addNode('mem')],
     ] as [string, IconName, () => void][]
   )
     .concat(

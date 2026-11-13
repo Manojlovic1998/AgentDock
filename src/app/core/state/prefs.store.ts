@@ -14,7 +14,8 @@ export interface Prefs {
   fontSize: string;
   wrap: boolean;
   lineNo: boolean;
-  fmt: boolean;
+  /** Rewrite frontmatter in canonical form when a file is saved. */
+  normalize: boolean;
   autosave: boolean;
   confirm: boolean;
   /** Project folder to scan; empty shows the sample workspace. */
@@ -45,7 +46,7 @@ const DEFAULTS: Prefs = {
   fontSize: '12',
   wrap: false,
   lineNo: true,
-  fmt: true,
+  normalize: false,
   autosave: false,
   confirm: true,
   root: '',

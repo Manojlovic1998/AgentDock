@@ -31,6 +31,39 @@ export function makeSkill(id: string, desc: string, scope: string, mod: string, 
   };
 }
 
+/** A new slash command with text of its own, as created in the app. */
+export function makeCmd(id: string): Resource {
+  return {
+    id,
+    type: 'cmd',
+    name: id,
+    desc: 'Describe what this command does.',
+    hint: '',
+    scope: 'project',
+    mod: 'just now',
+    body: 'Describe the task for Claude. $ARGUMENTS holds what was typed after the command.',
+    file: '.claude/commands/' + id + '.md',
+  };
+}
+
+/** A new project rule with text of its own, as created in the app. */
+export function makeRule(id: string): Resource {
+  const body = '# ' + id + '\n\nDescribe the convention Claude should follow.';
+  return { id, type: 'rule', name: id, desc: 'Describe the convention Claude should follow.', paths: '', scope: 'project', mod: 'just now', body, file: '.claude/rules/' + id + '.md' };
+}
+
+/** A new MCP server entry for the project's `.mcp.json`, as created in the app. */
+export function makeMcp(id: string): Resource {
+  const url = 'https://example.com/mcp';
+  return { id, type: 'mcp', name: id, desc: url, transport: 'http', url, scope: 'project', mod: 'just now', file: '.mcp.json' };
+}
+
+/** The project's CLAUDE.md, for a project that has none yet. */
+export function makeMemory(project: string): Resource {
+  const body = '# ' + (project || 'Project') + '\n\nDescribe the project, its commands and its conventions.';
+  return { id: 'mem:claude', type: 'mem', name: 'CLAUDE.md', desc: 'Project memory loaded into every session.', scope: 'project', mod: 'just now', body, lines: 3, file: 'CLAUDE.md' };
+}
+
 const cmd = (name: string, desc: string, hint: string, mod: string): Resource => ({
   id: 'cmd:' + name,
   type: 'cmd',
@@ -169,6 +202,7 @@ export const ACME_SNAPSHOT: WorkspaceSnapshot = {
     'mem:claude>rule:testing',
     'mem:claude>rule:commit-conventions',
   ],
+  docs: [],
   presets: [
     {
       id: 'p:settings',

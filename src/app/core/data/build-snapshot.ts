@@ -1,12 +1,14 @@
+import { derivedRel } from '../model/analysis';
 import { parseResource, toList } from '../model/frontmatter';
+import { McpConfig, mcpFields } from '../model/mcp';
 import { plural } from '../model/graph';
 import { nameFromFile } from '../model/source';
-import { Kind, Problem, Resource, StaticTable, Status, WorkspaceSnapshot } from '../model/types';
+import { FileDoc, Kind, Problem, Resource, StaticTable, Status, WorkspaceSnapshot } from '../model/types';
 import { ScanFile, ScanResult, ScanScope } from './scan';
 
 type Row = StaticTable['rows'][number];
 
-const SCOPE_RANK: Record<ScanScope, number> = { project: 0, local: 1, user: 2, plugin: 3 };
+const SCOPE_RANK: Record<ScanScope, number> = { managed: -1, project: 0, local: 1, user: 2, plugin: 3 };
 const LONG_MEMORY = 200;
 
 const lineCount = (text: string): number => (text ? text.replace(/\n$/, '').split('\n').length : 0);
@@ -42,7 +44,7 @@ function tables(): Record<string, StaticTable> {
 
 /** A workspace with nothing in it: shown before the first load and when a folder cannot be read. */
 export function emptySnapshot(name = '', path = ''): WorkspaceSnapshot {
-  return { name, path, branch: '', nodes: [], rel: [], presets: [], tables: tables(), activity: [], problems: [], scanned: 'just now' };
+  return { name, path, branch: '', nodes: [], docs: [], rel: [], presets: [], tables: tables(), activity: [], problems: [], scanned: 'just now' };
 }
 
 function parseJson(text: string): Record<string, unknown> | null {
@@ -105,6 +107,7 @@ export function hookScripts(scan: ScanResult): string[] {
 }
 
 const MEMORY_DESC: Record<ScanScope, string> = {
+  managed: 'Memory deployed by your organization.',
   project: 'Project memory shared with the team.',
   local: 'Local notes for this checkout, not committed.',
   user: 'Personal preferences across projects.',
@@ -112,6 +115,7 @@ const MEMORY_DESC: Record<ScanScope, string> = {
 };
 
 const SETTINGS_DESC: Record<ScanScope, string> = {
+  managed: 'Deployed by your organization. Overrides every other scope.',
   local: 'Personal overrides, not committed.',
   project: 'Shared permissions, hooks and environment.',
   user: 'User defaults for every project.',
@@ -181,16 +185,14 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
     if (!json) problems.push({ sev: 'err', msg: `${f.file} is not valid JSON.`, res: baseName(f.file), file: f.file, screen: 'mcp' });
     if (!servers || typeof servers !== 'object') return;
     Object.entries(servers as Record<string, Record<string, unknown>>).forEach(([name, cfg]) => {
-      const remote = typeof cfg?.['url'] === 'string';
-      const args = Array.isArray(cfg?.['args']) ? (cfg['args'] as unknown[]).map(String) : [];
-      const url = remote ? String(cfg['url']) : [String(cfg?.['command'] ?? ''), ...args].join(' ').trim();
+      const { transport, url } = mcpFields(cfg as McpConfig);
       const raw = JSON.stringify({ mcpServers: { [name]: cfg } }, null, 2);
       const n: Resource = {
         id: 'mcp:' + name,
         type: 'mcp',
         name,
         desc: url,
-        transport: typeof cfg?.['type'] === 'string' ? String(cfg['type']) : remote ? 'http' : 'stdio',
+        transport,
         url,
         file: f.file,
         mod: mod(f),
@@ -212,14 +214,14 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
   if (main) {
     const lines = lineCount(main.text);
     add(
-      { id: 'mem:claude', type: 'mem', name: 'CLAUDE.md', desc: 'Project memory loaded into every session.', file: main.file, mod: mod(main), scope: 'project', raw: main.text, mtime: main.mtime, lines },
+      { id: 'mem:claude', type: 'mem', name: 'CLAUDE.md', desc: 'Project memory loaded into every session.', file: main.file, mod: mod(main), scope: 'project', raw: main.text, body: main.text, mtime: main.mtime, lines },
       'Memory file',
       main,
     );
     if (lines > LONG_MEMORY)
       problems.push({ sev: 'info', msg: `CLAUDE.md is ${lines} lines. Path-specific guidance loads faster from .claude/rules/.`, res: 'CLAUDE.md', file: main.file, target: 'mem:claude' });
   }
-  memories.filter((f) => f !== main).forEach((f) => T['claudemd'].rows.push([f.file, MEMORY_DESC[f.scope], f.scope, plural(lineCount(f.text), 'line'), 'ok', mod(f)]));
+  memories.filter((f) => f !== main).forEach((f) => T['claudemd'].rows.push([f.file, MEMORY_DESC[f.scope], f.scope, plural(lineCount(f.text), 'line'), 'ok', mod(f), f.file]));
 
   of('rule').forEach((f) => markdown('rule', 'Rule', f, nested('rules')));
 
@@ -251,18 +253,8 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
       });
     });
 
-  const agents = nodes.filter((n) => n.type === 'agent' && n.name.length > 2);
-  nodes
-    .filter((n) => n.type === 'cmd')
-    .forEach((c) => {
-      const body = parseResource('cmd', c.raw ?? '').doc.body;
-      agents.forEach((a) => {
-        const name = a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        if (new RegExp('(^|[^\\w-])' + name + '($|[^\\w-])').test(body)) link(c.id, a.id);
-      });
-    });
-
-  if (by['mem:claude']) nodes.filter((n) => n.type === 'rule' && n.scope === 'project').forEach((r) => link('mem:claude', r.id));
+  // Command → agent and CLAUDE.md → rule follow from content. The model derives them again while editing.
+  derivedRel(nodes).forEach(([from, to]) => link(from, to));
 
   nodes.forEach((n) => {
     if (n.type === 'agent') n.linked = rel.filter((r) => r.startsWith(n.id + '>')).map((r) => r.slice(n.id.length + 1));
@@ -273,10 +265,11 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
   of('settings').forEach((f) => {
     const json = parseJson(f.text);
     const st: Status = json ? 'ok' : 'err';
-    T['settingsres'].rows.push([f.file, SETTINGS_DESC[f.scope], f.scope, json ? plural(Object.keys(json).length, 'key') : 'invalid JSON', st, mod(f)]);
+    T['settingsres'].rows.push([f.file, SETTINGS_DESC[f.scope], f.scope, json ? plural(Object.keys(json).length, 'key') : 'invalid JSON', st, mod(f), f.file]);
     if (!json) problems.push({ sev: 'err', msg: `${f.file} is not valid JSON.`, res: baseName(f.file), file: f.file, screen: 'settingsres' });
   });
-  T['settingsres'].rows.sort((a, b) => ['local', 'project', 'user'].indexOf(a[2]) - ['local', 'project', 'user'].indexOf(b[2]));
+  const precedence = ['managed', 'local', 'project', 'user'];
+  T['settingsres'].rows.sort((a, b) => precedence.indexOf(a[2]) - precedence.indexOf(b[2]));
 
   hooksOf(scan).forEach((h) => {
     const missing = !!h.script && missingScripts.indexOf(h.script) >= 0;
@@ -288,7 +281,7 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
   of('style').forEach((f) => {
     const p = parseResource('rule', f.text);
     const name = typeof p.data['name'] === 'string' ? p.data['name'] : baseName(f.file).replace(/\.md$/, '');
-    T['styles'].rows.push([name, p.fields.desc ?? '', f.scope, plural(lineCount(f.text), 'line'), 'ok', mod(f)]);
+    T['styles'].rows.push([name, p.fields.desc ?? '', f.scope, plural(lineCount(f.text), 'line'), 'ok', mod(f), f.file]);
   });
 
   scan.plugins.forEach((pl) => {
@@ -302,7 +295,7 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
 
   of('memory').forEach((f) => {
     const p = parseResource('rule', f.text);
-    T['memory'].rows.push([baseName(f.file), p.fields.desc ?? '', 'auto', plural(lineCount(f.text), 'line'), 'ok', mod(f)]);
+    T['memory'].rows.push([baseName(f.file), p.fields.desc ?? '', 'auto', plural(lineCount(f.text), 'line'), 'ok', mod(f), f.file]);
   });
 
   of('other').forEach((f) => {
@@ -310,6 +303,11 @@ export function buildSnapshot(scan: ScanResult, now: number, missingScripts: str
     const kind = /\.json$/.test(name) ? 'config' : SCRIPT.test(name) ? 'script' : 'file';
     T['other'].rows.push([name, f.file, kind, f.scope, 'ok', mod(f)]);
   });
+
+  // Files edited as text: everything scanned with content that is not a node on the graph.
+  snap.docs = files
+    .filter((f) => f !== main && (f.kind === 'settings' || f.kind === 'style' || f.kind === 'memory' || f.kind === 'claudemd'))
+    .map((f) => ({ file: f.file, kind: f.kind as FileDoc['kind'], scope: f.scope, text: f.text, mtime: f.mtime, writable: f.scope !== 'managed' && f.scope !== 'plugin' }));
 
   snap.branch = scan.branch || 'no branch';
   snap.nodes = nodes;

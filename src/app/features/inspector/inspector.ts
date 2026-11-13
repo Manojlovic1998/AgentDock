@@ -1,7 +1,10 @@
 import { Menu, MenuItem, MenuTrigger } from '@angular/aria/menu';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { validName } from '../../core/model/analysis';
+import { firstText } from '../../core/model/frontmatter';
 import { KIND_LABEL, STATUS_LABEL, labelOf, plural } from '../../core/model/graph';
+import { MCP_TRANSPORTS } from '../../core/model/mcp';
 import { SEVERITY_ICON, iconFor } from '../../core/model/icons';
 import { highlight, sourceOf } from '../../core/model/source';
 import { Kind, Resource, ResourcePatch } from '../../core/model/types';
@@ -59,6 +62,7 @@ export class Inspector {
 
   protected readonly sevIcon = SEVERITY_ICON;
   protected readonly models = MODELS;
+  protected readonly transports: SegOption[] = MCP_TRANSPORTS.map((t) => ({ value: t, label: t }));
   private resizeFrom = 0;
 
   protected readonly one = this.ws.selectedOne;
@@ -91,8 +95,31 @@ export class Inspector {
       ];
     return [
       { id: 'ov', label: 'Overview' },
+      { id: 'cf', label: n.type === 'mem' ? 'Content' : 'Configuration' },
       { id: 'src', label: 'Source' },
     ];
+  });
+
+  /**
+   * Whether the name can no longer be changed here. The name of a command or rule is its file
+   * path and that of an MCP server its key in the file, so it is fixed once the resource is saved.
+   */
+  protected readonly nameLocked = computed(() => {
+    const n = this.one();
+    return !!n && n.raw !== undefined && n.type !== 'agent' && n.type !== 'skill';
+  });
+
+  protected readonly nameHint = computed(() => {
+    const n = this.one();
+    if (!n || n.type === 'agent' || n.type === 'skill') return '';
+    if (this.nameLocked()) return n.type === 'mcp' ? 'The name is the key in the file and cannot be changed here.' : 'The name is the file path and cannot be changed here.';
+    if (!validName(n)) return n.type === 'mcp' ? 'Use a name without spaces.' : 'This name cannot be used as a file name.';
+    return n.type === 'mcp' ? '' : 'Use a colon for a subfolder: git:commit is saved as git/commit.md.';
+  });
+
+  protected readonly bodyTitle = computed(() => {
+    const type = this.one()?.type;
+    return type === 'cmd' ? 'Prompt' : type === 'rule' ? 'Rule text' : type === 'mem' ? 'CLAUDE.md' : 'Instructions';
   });
 
   protected readonly tab = computed<InspectorTab>(() => (this.tabs().some((t) => t.id === this.ui.tab()) ? this.ui.tab() : 'ov'));
@@ -226,6 +253,16 @@ export class Inspector {
   protected edit(patch: ResourcePatch): void {
     const n = this.one();
     if (n) this.ws.edit(n.id, patch);
+  }
+
+  /** Edits the text below the frontmatter, keeping what is derived from it in step. */
+  protected editBody(body: string): void {
+    const n = this.one();
+    if (!n) return;
+    // What a rule shows as its description is the first line of its text.
+    if (n.type === 'rule') this.edit({ body, desc: firstText(body) });
+    else if (n.type === 'mem') this.edit({ body, lines: body ? body.replace(/\n$/, '').split('\n').length : 0 });
+    else this.edit({ body });
   }
 
   protected text(e: Event): string {

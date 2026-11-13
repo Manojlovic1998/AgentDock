@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld('agentDock', {
   pickFolder: () => ipcRenderer.invoke('workspace:pick'),
   scan: (root: string, options: unknown) => ipcRenderer.invoke('workspace:scan', root, options),
   exists: (root: string, paths: string[]) => ipcRenderer.invoke('workspace:exists', root, paths),
+  has: (root: string, items: unknown[]) => ipcRenderer.invoke('workspace:has', root, items),
   apply: (root: string, ops: unknown[]) => ipcRenderer.invoke('workspace:apply', root, ops),
   copy: (from: string, to: string, items: unknown[], replace: boolean) => ipcRenderer.invoke('workspace:copy', from, to, items, replace),
+  watch: (root: string, user: boolean) => ipcRenderer.invoke('workspace:watch', root, user),
+  unwatch: () => ipcRenderer.invoke('workspace:unwatch'),
+  onChanged: (listener: () => void) => {
+    ipcRenderer.on('workspace:changed', () => listener());
+  },
 });

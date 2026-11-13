@@ -13,7 +13,7 @@ import { Switch } from '../../ui/switch';
 const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /**
- * Dialog for copying the chosen agents and skills into another project.
+ * Dialog for copying the chosen agents, skills, commands, rules and MCP servers into another project.
  *
  * @remarks
  * Open while {@link UiStore.copy} holds resource ids. The user picks a destination among the
@@ -90,7 +90,7 @@ const folderName = (path: string): string => path.split(/[\\/]/).filter(Boolean)
             <button adSwitch [checked]="replace()" aria-labelledby="copy-replace" (click)="replace.set(!replace())"></button>
             <span id="copy-replace" class="leading-normal">
               Replace the {{ conflictsLabel() }} already there
-              <span class="text-tx3">· the old version goes to the Recycle Bin</span>
+              <span class="text-tx3">· {{ replaceNote() }}</span>
             </span>
           </label>
         }
@@ -146,6 +146,13 @@ export class CopyDialog {
   /** Number of planned items the destination already has. */
   protected readonly conflicts = computed(() => this.rows().filter((r) => r.exists).length);
   protected readonly conflictsLabel = computed(() => plural(this.conflicts(), 'resource'));
+  /** What happens to what is replaced: files go to the Recycle Bin, but an MCP server is only a key in a file. */
+  protected readonly replaceNote = computed(() => {
+    const clashing = this.rows().filter((r) => r.exists);
+    const servers = clashing.filter((r) => r.kind === 'mcp').length;
+    if (!servers) return 'the old version goes to the Recycle Bin';
+    return servers === clashing.length ? 'the old server settings are overwritten' : 'old files go to the Recycle Bin, old server settings are overwritten';
+  });
   protected readonly skillsLabel = computed(() => {
     const n = this.plan().agentSkills;
     return n === 1 ? 'project skill it uses' : `${n} project skills they use`;

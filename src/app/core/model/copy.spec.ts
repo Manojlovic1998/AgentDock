@@ -15,13 +15,17 @@ function model(nodes: Resource[], rel: RelPair[] = []): Model {
 const change = (id: string): Change => ({ id, kind: 'M', file: '', lines: [], add: 0, del: 0 });
 
 describe('copyBlocker', () => {
-  it('allows project agents and skills that are on disk', () => {
+  it('allows project agents, skills, commands, rules and MCP servers that are on disk', () => {
     expect(copyBlocker(res('reviewer', 'agent'))).toBeNull();
     expect(copyBlocker(res('testing', 'skill'))).toBeNull();
+    expect(copyBlocker(res('deploy', 'cmd'))).toBeNull();
+    expect(copyBlocker(res('testing', 'rule'))).toBeNull();
+    expect(copyBlocker(res('github', 'mcp', { file: '.mcp.json' }))).toBeNull();
   });
 
   it('explains why everything else cannot be copied', () => {
-    expect(copyBlocker(res('deploy', 'cmd'))).toContain('only agents and skills');
+    expect(copyBlocker(res('claude', 'mem', { file: 'CLAUDE.md' }))).toContain('specific to its project');
+    expect(copyBlocker(res('corp', 'mcp', { scope: 'managed' }))).toContain('your organization');
     expect(copyBlocker(res('new-agent', 'agent', { raw: undefined }))).toContain('Save it first');
     expect(copyBlocker(res('global', 'skill', { scope: 'user' }))).toContain('user scope');
     expect(copyBlocker(res('kendo', 'skill', { scope: 'plugin' }))).toContain('plugin scope');
@@ -49,6 +53,24 @@ describe('copyPlan', () => {
       { kind: 'skill', file: '.claude/skills/testing/SKILL.md' },
     ]);
     expect(plan.blocked).toEqual([]);
+  });
+
+  it('copies commands and rules by their file, and an MCP server by its key in .mcp.json', () => {
+    const cmd = res('deploy', 'cmd', { file: '.claude/commands/ops/deploy.md' });
+    const rule = res('api', 'rule', { file: '.claude/rules/api.md' });
+    const server = res('github', 'mcp', { file: '.mcp.json', raw: '{}' });
+    const plan = copyPlan(['deploy', 'api', 'github'], model([cmd, rule, server]), [], true);
+    expect(plan.items.map(({ kind, file, name }) => ({ kind, file, name }))).toEqual([
+      { kind: 'cmd', file: '.claude/commands/ops/deploy.md', name: undefined },
+      { kind: 'rule', file: '.claude/rules/api.md', name: undefined },
+      { kind: 'mcp', file: '.mcp.json', name: 'github' },
+    ]);
+  });
+
+  it('does not add the MCP servers an agent uses', () => {
+    const server = res('github', 'mcp', { file: '.mcp.json', raw: '{}' });
+    const plan = copyPlan(['reviewer'], model([agent, server], [['reviewer', 'github']]), [], true);
+    expect(plan.items.map((i) => i.id)).toEqual(['reviewer']);
   });
 
   it('adds the project skills an agent uses, and only those', () => {
