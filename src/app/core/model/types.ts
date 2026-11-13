@@ -93,6 +93,30 @@ export interface SaveResult {
   errors: { file: string; error: string }[];
 }
 
+/**
+ * One agent or skill to copy into another project.
+ */
+export interface CopyItem {
+  kind: 'agent' | 'skill';
+  /**
+   * Project-relative path of the agent file, or of the skill's `SKILL.md`.
+   * A skill is copied as the whole folder that contains this file.
+   */
+  file: string;
+}
+
+/**
+ * Outcome of copying resources into another project. Every requested file is in exactly one list.
+ */
+export interface CopyResult {
+  /** Files written to the destination. */
+  copied: string[];
+  /** Files left alone because the destination already had them and replacing was not asked for. */
+  skipped: string[];
+  /** Files that could not be copied. When checks fail before writing, nothing is copied at all. */
+  errors: { file: string; error: string }[];
+}
+
 /** Editable workspace state: current values next to the last saved baseline. */
 export interface WorkspaceState {
   rel: string[];

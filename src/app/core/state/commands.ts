@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
+import { copyPlan } from '../model/copy';
 import { plural } from '../model/graph';
 import { Kind, Problem } from '../model/types';
 import { PrefsStore } from './prefs.store';
@@ -73,6 +74,27 @@ export class Commands {
     this.ui.ctx.set(null);
     if (this.ws.confirmDelete) this.ui.dialog.set(id);
     else this.ws.remove(id);
+  }
+
+  /**
+   * Opens the "copy to another project" dialog.
+   *
+   * @remarks
+   * When the resource is part of a multi-selection, the whole selection is offered. A note is
+   * shown instead of the dialog when there is nothing that can be copied.
+   *
+   * @param id - Resource the action was invoked on.
+   */
+  askCopy(id: string): void {
+    this.ui.ctx.set(null);
+    if (!this.ws.canCopy) return this.ui.note('Copying needs a project folder: the sample workspace has no files');
+    const ids = this.ui.isSelected(id) ? this.ui.sel() : [id];
+    const plan = copyPlan(ids, this.ws.model(), [], false);
+    if (!plan.items.length) {
+      const first = plan.blocked[0];
+      return this.ui.note(first ? `${first.label} ${first.reason}` : 'Nothing to copy');
+    }
+    this.ui.copy.set(ids);
   }
 
   runValidation(): void {

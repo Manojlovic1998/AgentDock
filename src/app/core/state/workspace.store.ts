@@ -3,8 +3,9 @@ import { emptySnapshot } from '../data/build-snapshot';
 import { makeAgent, makeSkill } from '../data/mock-data';
 import { ResourceRepository } from '../data/resource-repository';
 import { buildModel, fileOps, findChanges, findProblems, relTouches, statusMap } from '../model/analysis';
+import { copySummary } from '../model/copy';
 import { FILTERS, KIND_LABEL, bounds, filterKey, labelOf, layout, plural } from '../model/graph';
-import { Change, Point, Resource, ResourcePatch, SaveResult, Status, WorkspaceSnapshot, WorkspaceState } from '../model/types';
+import { Change, CopyItem, CopyResult, Point, Resource, ResourcePatch, SaveResult, Status, WorkspaceSnapshot, WorkspaceState } from '../model/types';
 import { PrefsStore } from './prefs.store';
 import { UiStore } from './ui.store';
 import { ViewportStore } from './viewport.store';
@@ -380,6 +381,66 @@ export class WorkspaceStore {
     }
     await this.reload();
     this.announce(`Saved ${plural(n, 'file')} to disk`);
+  }
+
+  /* ---------- copying to another project ---------- */
+
+  /** Whether the open workspace has files that can be copied; false for the sample workspace. */
+  get canCopy(): boolean {
+    return this.repo.persistent;
+  }
+
+  /**
+   * Asks the user for a folder with the native picker.
+   *
+   * @returns The chosen folder, or null when the picker was cancelled or is not available.
+   */
+  chooseFolder(): Promise<string | null> {
+    return this.repo.pickFolder();
+  }
+
+  /**
+   * Checks which of the given resources another project already has.
+   *
+   * @param dest - Folder of the other project.
+   * @param items - Resources about to be copied there.
+   * @returns One flag per item. All false when the folder cannot be read.
+   */
+  async existsIn(dest: string, items: CopyItem[]): Promise<boolean[]> {
+    try {
+      return await this.repo.existsIn(dest, items);
+    } catch {
+      return items.map(() => false);
+    }
+  }
+
+  /**
+   * Copies agents and skills, as saved on disk, into another project and reports the outcome
+   * in a toast and the activity log. The open workspace is not changed.
+   *
+   * @param dest - Folder of the other project. It is added to the recent folders on success.
+   * @param items - Resources to copy.
+   * @param replace - Replace resources the destination already has, instead of skipping them.
+   * @returns False when nothing could be copied because of an error, true otherwise.
+   */
+  async copyTo(dest: string, items: CopyItem[], replace: boolean): Promise<boolean> {
+    let result: CopyResult;
+    try {
+      result = await this.repo.copyTo(dest, items, replace);
+    } catch (e) {
+      result = { copied: [], skipped: [], errors: [{ file: 'workspace', error: cause(e) }] };
+    }
+    const failed = result.errors.length;
+    if (failed && !result.copied.length) {
+      const [first, ...more] = result.errors;
+      this.ui.note(`Not copied: ${first.file} ${first.error}${more.length ? ` (and ${plural(more.length, 'other file')})` : ''}`);
+      return false;
+    }
+    const recent = this.prefs.prefs().recent;
+    this.prefs.set('recent', [dest, ...recent.filter((r) => r !== dest)].slice(0, 6));
+    const name = dest.split(/[\\/]/).filter(Boolean).pop() ?? dest;
+    this.announce(copySummary(result.copied.length, result.skipped.length, name) + (failed ? `. ${plural(failed, 'file')} failed` : ''));
+    return true;
   }
 
   tidyLayout(): void {

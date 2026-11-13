@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { ScanOptions, ScanResult } from './data/scan';
-import { FileOp, SaveResult } from './model/types';
+import { CopyItem, CopyResult, FileOp, SaveResult } from './model/types';
 
 /** What electron/preload.ts exposes on `window.agentDock`. */
 export interface AgentDockBridge {
@@ -14,6 +14,11 @@ export interface AgentDockBridge {
   /** Whether each path (relative to the project root, absolute or "~/…") is an existing file. */
   exists(root: string, paths: string[]): Promise<boolean[]>;
   apply(root: string, ops: FileOp[]): Promise<SaveResult>;
+  /**
+   * Copies agents and skills from the project at `from` into the project at `to`.
+   * Existing ones in the destination are skipped unless `replace` is true.
+   */
+  copy(from: string, to: string, items: CopyItem[], replace: boolean): Promise<CopyResult>;
 }
 
 declare global {

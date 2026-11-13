@@ -41,6 +41,8 @@ If Electron exits immediately with `Cannot find module 'electron'`, the shell ha
 - **Overview**, **resource lists**, **Validation**, **Changes** (line diff, discard, save) and **Settings**
   (theme, accent, density, editor, graph and discovery options; stored in `localStorage`).
 - **Command palette** (`Ctrl`/`⌘` + `K`), toasts with Undo, delete confirmation.
+- **Copy to another project** — right-click an agent or skill (or use the copy button in the Agents
+  and Skills lists) to copy it into another project folder, with the skills an agent uses.
 - **Help** (the `?` button in the title bar) — a product tour of the whole app and walkthroughs that
   teach one task each. The tour is offered once on first launch.
 
@@ -127,6 +129,16 @@ Changes to the scan settings apply on the next scan: **Rescan workspace** in the
 - Refuses to overwrite a file that changed on disk since the scan. If any file fails, nothing is
   written and the edits stay pending.
 - Deleted resources go to the Recycle Bin / Trash; deleting a skill removes its whole folder.
+
+**What copying to another project does**
+
+- Copies project-scope agents and skills as they are on disk: pending edits are not included, and a
+  resource that was never saved cannot be copied. A skill is copied as its whole folder.
+- Writes only into the destination's `.claude/agents` and `.claude/skills`. An agent or skill the
+  destination already has is skipped unless **Replace** is on; the replaced one goes to the
+  Recycle Bin / Trash.
+- Does not touch the open project, and does not open the destination. It is added to the recent
+  folders in the workspace switcher.
 
 **Not yet**
 
