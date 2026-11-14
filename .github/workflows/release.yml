@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: Linux, os: ubuntu-latest, script: 'electron:build:linux', files: 'release/{*.AppImage,latest-linux.yml}' }
+          - { name: Linux, os: ubuntu-latest, script: 'electron:build:linux', files: "release/*.AppImage\nrelease/latest-linux.yml" }
           - { name: macOS, os: macos-latest, script: 'electron:build:mac', files: 'release/*.dmg' }
-          - { name: Windows, os: windows-latest, script: 'electron:build:win', files: 'release/{*.exe,*.exe.blockmap,latest.yml}' }
+          - { name: Windows, os: windows-latest, script: 'electron:build:win', files: "release/*.exe\nrelease/*.exe.blockmap\nrelease/latest.yml" }
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
@@ -35,6 +35,7 @@ jobs:
           [ "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json version"; exit 1; }
       - run: npm test
       - run: npm run ${{ matrix.script }}
+      # upload-artifact does not support {a,b} brace globs; list one pattern per line.
       - uses: actions/upload-artifact@v4
         with:
           name: AgentDock-${{ matrix.name }}
