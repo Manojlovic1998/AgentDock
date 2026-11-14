@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /*
  * Tests for electron/updater.ts, driven through the IPC handlers it registers.
@@ -45,8 +45,16 @@ const call = (channel: string, ...args: unknown[]) => mocks.handlers.get(channel
 const emitter = mocks.autoUpdater as unknown as EventEmitter;
 const window = { webContents: { send: mocks.send } } as any;
 
+const realPlatform = process.platform;
+
+/** Pretends to run on `platform`, which decides whether updates install in place or open the release page. */
+const usePlatform = (platform: NodeJS.Platform) => Object.defineProperty(process, 'platform', { value: platform });
+
+afterEach(() => usePlatform(realPlatform));
+
 /** Registers the handlers on a fresh state; settings from earlier tests are cleared first. */
-function setup(version = '0.1.0-beta.1') {
+function setup(version = '0.1.0-beta.1', platform: NodeJS.Platform = 'win32') {
+  usePlatform(platform);
   fs.rmSync(path.join(mocks.userData, 'updater.json'), { force: true });
   mocks.handlers.clear();
   mocks.autoUpdater.removeAllListeners();
@@ -181,13 +189,10 @@ describe('updater', () => {
 });
 
 describe('updater on macOS', () => {
-  const platform = process.platform;
   beforeEach(() => {
-    Object.defineProperty(process, 'platform', { value: 'darwin' });
     mocks.fetch.mockReset();
     mocks.openExternal.mockReset();
   });
-  const restore = () => Object.defineProperty(process, 'platform', { value: platform });
 
   const releases = [
     { tag_name: 'v0.1.0-beta.3', html_url: 'https://github.com/o/r/releases/tag/v0.1.0-beta.3', body: 'Third beta', draft: false, prerelease: true },
@@ -196,20 +201,18 @@ describe('updater on macOS', () => {
   ];
 
   it('finds the newest published release and opens its page instead of downloading', async () => {
-    setup('0.1.0-beta.1');
+    setup('0.1.0-beta.1', 'darwin');
     mocks.fetch.mockResolvedValue({ ok: true, json: async () => releases });
     const state = await call('updater:check');
     expect(state).toMatchObject({ status: 'available', version: '0.1.0-beta.3', notes: 'Third beta', manualInstall: true });
     expect(mocks.autoUpdater.checkForUpdates).not.toHaveBeenCalled();
     await call('updater:download');
     expect(mocks.openExternal).toHaveBeenCalledWith('https://github.com/o/r/releases/tag/v0.1.0-beta.3');
-    restore();
   });
 
   it('ignores prereleases for a stable build', async () => {
-    setup('0.1.0');
+    setup('0.1.0', 'darwin');
     mocks.fetch.mockResolvedValue({ ok: true, json: async () => releases });
     expect((await call('updater:check')).status).toBe('uptodate');
-    restore();
   });
 });
