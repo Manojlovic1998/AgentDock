@@ -39,9 +39,16 @@
       "dist-electron/**/*",
       "package.json"
     ],
+    "extraResources": [
+      "LICENSE",
+      "NOTICE"
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
+    },
+    "nsis": {
+      "license": "LICENSE"
     },
     "mac": {
       "target": "dmg",
