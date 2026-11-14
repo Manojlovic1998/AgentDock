@@ -195,7 +195,7 @@ git push origin v0.1.0-beta.1
 
 The Release workflow builds the Windows, macOS and Linux installers and attaches them to a GitHub
 pre-release (any tag with a hyphen). Installers are unsigned, so Windows SmartScreen and macOS
-Gatekeeper will warn on first launch.
+Gatekeeper will warn on first launch. The full steps are in [docs/releasing.md](docs/releasing.md).
 
 ### Updates
 
