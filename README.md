@@ -197,6 +197,18 @@ The Release workflow builds the Windows, macOS and Linux installers and attaches
 pre-release (any tag with a hyphen). Installers are unsigned, so Windows SmartScreen and macOS
 Gatekeeper will warn on first launch.
 
+### Updates
+
+The desktop app looks for a newer release on GitHub about ten seconds after it starts (Settings →
+About and updates turns this off, and has a "Check for updates" button). It never downloads on its
+own: a dialog offers **Download**, **Later** or **Skip this version**, and once the download is done
+asks to **Restart now** or install on the next launch. A beta build is offered newer betas and the
+final release; a stable build is offered stable releases only.
+
+The installer must be published with its update files, so keep `latest*.yml` and the `.blockmap`
+files in the release (the Release workflow uploads them). macOS builds are unsigned and cannot
+install an update in place: there the dialog opens the release page to download the new dmg.
+
 ## Website
 
 The project site lives in [site/](site/) (plain HTML and CSS, no build step) and is published to

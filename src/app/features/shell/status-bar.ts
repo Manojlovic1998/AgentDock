@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { plural } from '../../core/model/graph';
 import { BottomTab, UiStore } from '../../core/state/ui.store';
+import { UpdateStore } from '../../core/state/update.store';
 import { ViewportStore } from '../../core/state/viewport.store';
 import { WorkspaceStore } from '../../core/state/workspace.store';
 import { Tip } from '../../headless/tip';
@@ -20,6 +21,11 @@ import { Icon } from '../../ui/icon';
       <svg adIcon="branch" class="s"></svg>{{ changeLabel() }}
     </button>
     <span class="flex-1"></span>
+    @if (update.pending()) {
+      <button class="sb" adTip="A new version of AgentDock is available" [tipAbove]="true" (click)="update.dialogOpen.set(true)">
+        <svg adIcon="zap" class="s c-info"></svg>Update available
+      </button>
+    }
     @if (ws.stale()) {
       <button class="sb" adTip="Files changed outside AgentDock. Rescan to load them" [tipAbove]="true" (click)="ws.rescan()">
         <svg adIcon="alert" class="s c-warn"></svg>Changed on disk
@@ -50,6 +56,7 @@ import { Icon } from '../../ui/icon';
 export class StatusBar {
   protected readonly ws = inject(WorkspaceStore);
   protected readonly ui = inject(UiStore);
+  protected readonly update = inject(UpdateStore);
   private readonly viewport = inject(ViewportStore);
 
   protected readonly changeLabel = computed(() => {
