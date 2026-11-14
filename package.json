@@ -1,6 +1,6 @@
 {
   "name": "agent-dock",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Visual configuration editor for Claude Code agents, skills, commands, rules and MCP servers.",
   "main": "dist-electron/main.js",
   "author": "Nemanja Manojlovic",
