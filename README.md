@@ -218,6 +218,9 @@ GitHub Pages by `.github/workflows/pages.yml` when `site/` changes on `main`.
 
 Apache License 2.0. See [LICENSE](LICENSE) for the terms and [NOTICE](NOTICE) for the copyright notice.
 
+The software is provided "AS IS", without warranties or conditions of any kind, and the authors are not
+liable for any damages arising from its use (sections 7 and 8 of the license).
+
 ## Trademarks and affiliation
 
 AgentDock is an independent open-source project. It is not affiliated with, endorsed by, sponsored by
