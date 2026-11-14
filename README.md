@@ -182,6 +182,21 @@ watched, because Claude Code rewrites it constantly; use **Rescan workspace** fo
 - Installers are not code signed and there is no auto-update. macOS and Linux builds are configured
   but only the Windows installer has been run so far.
 
+## Beta releases
+
+AgentDock is in beta: versions like `0.1.0-beta.N` are pre-releases, not stable, and file formats or
+behaviour may change. To publish one, set `version` in `package.json` (and `package-lock.json`),
+commit, then push a matching tag:
+
+```
+git tag v0.1.0-beta.1
+git push origin v0.1.0-beta.1
+```
+
+The Release workflow builds the Windows, macOS and Linux installers and attaches them to a GitHub
+pre-release (any tag with a hyphen). Installers are unsigned, so Windows SmartScreen and macOS
+Gatekeeper will warn on first launch.
+
 ## Website
 
 The project site lives in [site/](site/) (plain HTML and CSS, no build step) and is published to

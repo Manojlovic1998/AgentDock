@@ -1,6 +1,6 @@
 {
   "name": "agent-dock",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "Visual configuration editor for Claude Code agents, skills, commands, rules and MCP servers.",
   "main": "dist-electron/main.js",
   "author": "Nemanja Manojlovic",
@@ -24,6 +24,7 @@
   "build": {
     "appId": "dev.agentdock.app",
     "productName": "AgentDock",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "build"
