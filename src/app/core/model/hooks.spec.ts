@@ -63,6 +63,14 @@ describe('hooks', () => {
     expect(removeHook(SETTINGS, { event: 'Nope', group: 3, index: 1 })).toBe(SETTINGS);
   });
 
+  it('keeps tab indentation, key order and a missing final newline through an add and a remove', () => {
+    const text = '{\n\t"model": "opus",\n\t"hooks": {}\n}';
+    const added = setHook(text, null, { event: 'Stop', matcher: '', command: 'x' })!;
+    expect(added).toBe(JSON.stringify({ model: 'opus', hooks: { Stop: [{ hooks: [{ type: 'command', command: 'x' }] }] } }, null, '\t'));
+    expect(listHooks(added)).toEqual([{ event: 'Stop', matcher: '', command: 'x', at: { event: 'Stop', group: 0, index: 0 } }]);
+    expect(removeHook(added, { event: 'Stop', group: 0, index: 0 })).toBe('{\n\t"model": "opus"\n}');
+  });
+
   it('refuses text that is not a JSON object', () => {
     expect(setHook('{ broken', null, { event: 'Stop', matcher: '', command: 'x' })).toBeNull();
     expect(setHook('[1]', null, { event: 'Stop', matcher: '', command: 'x' })).toBeNull();

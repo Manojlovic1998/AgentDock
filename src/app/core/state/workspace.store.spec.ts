@@ -92,6 +92,44 @@ describe('WorkspaceStore', () => {
     expect(ws.skillsOf('angular-developer').map((s) => s.id)).toContain('angular-patterns');
   });
 
+  it('undoes only the last action, and only once', () => {
+    ui.sel.set(['code-reviewer']);
+    ws.remove('code-reviewer');
+    expect(ui.sel()).toEqual([]);
+
+    ws.undo();
+    expect(ws.model().by['code-reviewer']).toBeDefined();
+    expect(ui.sel()).toEqual(['code-reviewer']);
+    expect(ui.toast()).toEqual({ msg: 'Reverted', undo: false });
+
+    ws.remove('code-reviewer');
+    ws.undo();
+    ws.undo();
+    expect(ws.model().by['code-reviewer']).toBeDefined();
+    expect(ws.changes().some((c) => c.id === 'code-reviewer')).toBe(false);
+  });
+
+  it('discards a field edit back to the saved value, and the discard can be undone', () => {
+    const saved = ws.model().by['angular-developer'].desc;
+    ws.edit('angular-developer', { desc: 'Edited description' });
+    const change = ws.changes().find((c) => c.id === 'angular-developer');
+    expect(change?.kind).toBe('M');
+
+    ws.discardOne(change!);
+    expect(ws.model().by['angular-developer'].desc).toBe(saved);
+    expect(ws.changes().some((c) => c.id === 'angular-developer')).toBe(false);
+
+    ws.undo();
+    expect(ws.model().by['angular-developer'].desc).toBe('Edited description');
+  });
+
+  it('says so when there is nothing to discard', () => {
+    ws.discardAll();
+    expect(ws.changes()).toEqual([]);
+    ws.discardAll();
+    expect(ui.toast()?.msg).toBe('Nothing to discard');
+  });
+
   it('applies kind filters to the visible set', () => {
     ui.filt.set({ skill: false });
     expect(ws.visible().some((n) => n.type === 'skill')).toBe(false);

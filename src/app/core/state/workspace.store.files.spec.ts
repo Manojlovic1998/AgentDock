@@ -341,5 +341,23 @@ describe('WorkspaceStore with files', () => {
       expect(ws.stale()).toBe(false);
       expect(ws.model().by['agent:reviewer'].desc).toBe('Edited elsewhere.');
     });
+
+    it('tells about outside changes once and refuses to rescan over pending edits', async () => {
+      ws.edit('agent:reviewer', { model: 'opus' });
+      repo.writeOutside('.claude/agents/reviewer.md', AGENT.replace('Reviews code.', 'Edited elsewhere.'));
+      await settle();
+      expect(ui.toast()?.msg).toContain('Files changed on disk');
+
+      ui.toast.set(null);
+      repo.writeOutside('.claude/agents/reviewer.md', AGENT.replace('Reviews code.', 'Edited again.'));
+      await settle();
+      expect(ui.toast()).toBeNull();
+      expect(ws.stale()).toBe(true);
+
+      await ws.rescan();
+      expect(ui.toast()?.msg).toBe('Save or discard 1 pending change before rescanning');
+      expect(ws.model().by['agent:reviewer']).toMatchObject({ model: 'opus', desc: 'Reviews code.' });
+      expect(ws.stale()).toBe(true);
+    });
   });
 });
