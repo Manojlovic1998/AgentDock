@@ -209,6 +209,63 @@ describe('buildSnapshot', () => {
     expect(scriptOf('./scripts/a.sh arg')).toBe('./scripts/a.sh');
     expect(scriptOf('npx prettier --write .')).toBeNull();
   });
+
+  describe('scope precedence', () => {
+    const agent = (desc: string): string => `---\nname: x\ndescription: ${desc}\n---\n\nBody\n`;
+    const copies = [
+      file('agent', 'kit/agents/x.md', agent('From the plugin.'), 'plugin'),
+      file('agent', '~/.claude/agents/x.md', agent('From the user.'), 'user'),
+      file('agent', '.claude/agents/x.md', agent('From the project.')),
+    ];
+
+    it('takes project over user over plugin, whatever order the files come in', () => {
+      const s = buildSnapshot(scan(copies), NOW);
+      expect(s.nodes).toHaveLength(1);
+      expect(s.nodes[0]).toMatchObject({ id: 'agent:x', scope: 'project', desc: 'From the project.', file: '.claude/agents/x.md' });
+      expect(s.problems.map((p) => p.sev + ': ' + p.msg)).toEqual([
+        'info: Agent x exists in project and user scope. The project copy takes precedence.',
+        'info: Agent x exists in project and plugin scope. The project copy takes precedence.',
+      ]);
+    });
+
+    it('takes user over plugin when the project has no copy', () => {
+      const s = buildSnapshot(scan(copies.slice(0, 2)), NOW);
+      expect(s.nodes[0]).toMatchObject({ scope: 'user', desc: 'From the user.' });
+    });
+
+    it('shows a local file as project scope', () => {
+      const s = buildSnapshot(scan([file('cmd', '.claude/commands/ship.md', 'Ship it.\n', 'local')]), NOW);
+      expect(s.nodes[0]).toMatchObject({ id: 'cmd:ship', scope: 'project' });
+    });
+  });
+
+  describe('relationships', () => {
+    it('links skills from a comma list and MCP servers named in tools, but only servers that exist', () => {
+      const s = buildSnapshot(
+        scan([
+          file('agent', '.claude/agents/r.md', '---\nname: r\nskills: one, two\ntools: Read, mcp__srv__x, mcp__nope\n---\n'),
+          file('skill', '.claude/skills/one/SKILL.md', '---\ndescription: One.\n---\n'),
+          file('mcp', '.mcp.json', JSON.stringify({ mcpServers: { srv: { command: 'x' } } })),
+        ]),
+        NOW,
+      );
+      expect(s.rel).toEqual(['agent:r>skill:one', 'agent:r>skill:two', 'agent:r>mcp:srv']);
+      expect(s.nodes.find((n) => n.id === 'skill:two')).toMatchObject({ missing: true });
+      expect(s.nodes.find((n) => n.id === 'agent:r')!.linked).toEqual(['skill:one', 'skill:two', 'mcp:srv']);
+    });
+
+    it('does not link a command to an agent whose name is only part of a word or too short', () => {
+      const s = buildSnapshot(
+        scan([
+          file('agent', '.claude/agents/qa.md', '---\nname: qa\n---\n'),
+          file('agent', '.claude/agents/reviewer.md', '---\nname: reviewer\n---\n'),
+          file('cmd', '.claude/commands/ask.md', 'Ask qa, then code-reviewer.\n'),
+        ]),
+        NOW,
+      );
+      expect(s.rel).toEqual([]);
+    });
+  });
 });
 
 describe('scanned sources', () => {
