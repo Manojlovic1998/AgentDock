@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop, 'release/**']
   pull_request:
 
 # A newer push to the same branch or PR replaces the run in progress.
