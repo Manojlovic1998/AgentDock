@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in AgentDock does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the [open issues](https://github.com/Manojlovic1998/AgentDock/issues) first in case it is already known.
+  - type: input
+    id: version
+    attributes:
+      label: AgentDock version
+      description: Shown in Settings → About and updates.
+      placeholder: 0.1.0-beta.2
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Browser (npm start)
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      placeholder: Windows 11 23H2, macOS 15.1, Ubuntu 24.04
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, one step per line. Include the kind of resource involved (agent, skill, command, rule, MCP server, CLAUDE.md, hook) if it matters.
+      placeholder: |
+        1. Open folder…
+        2. Select the agent "reviewer"
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead. Screenshots and error messages help.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Relevant config files (remove secrets first), logs or other context.
